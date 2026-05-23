@@ -1,0 +1,93 @@
+{
+	"info": {
+		"_postman_id": "scv-captura-foto-test",
+		"name": "SCV - Captura foto (pruebas)",
+		"description": "Laravel endpoint público + NVR ISAPI snapshot (GET con Digest Auth). HiLook NVR puede devolver notSupport.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api"
+		},
+		{
+			"key": "nvr_host",
+			"value": "192.168.1.68"
+		},
+		{
+			"key": "nvr_user",
+			"value": "captura"
+		},
+		{
+			"key": "nvr_password",
+			"value": "3lfutur0"
+		}
+	],
+	"item": [
+		{
+			"name": "Captura foto (Laravel TEST - público, sin login)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/boletos/capturar-foto-test",
+					"host": ["{{base_url}}"],
+					"path": ["boletos", "capturar-foto-test"]
+				},
+				"description": "Público. Devuelve foto_ruta y foto_url con imagen placeholder (sin cámara)."
+			}
+		},
+		{
+			"name": "NVR - Snapshot ISAPI (GET + Digest Auth)",
+			"request": {
+				"auth": {
+					"type": "digest",
+					"digest": [
+						{
+							"key": "username",
+							"value": "{{nvr_user}}",
+							"type": "string"
+						},
+						{
+							"key": "password",
+							"value": "{{nvr_password}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://{{nvr_host}}/ISAPI/ContentMgmt/StreamingProxy/channels/101/picture",
+					"protocol": "http",
+					"host": ["{{nvr_host}}"],
+					"path": ["ISAPI", "ContentMgmt", "StreamingProxy", "channels", "101", "picture"]
+				},
+				"description": "Configuración EXACTA para el NVR.\n\nMethod: GET\nURL: http://192.168.1.68/ISAPI/ContentMgmt/StreamingProxy/channels/101/picture\nAuthorization: Digest Auth\nUsername: captura\nPassword: 3lfutur0\n\nEn HiLook NVR-108H-D/8P puede devolver 'Invalid Operation notSupport' (sin ISAPI snapshot)."
+			}
+		},
+		{
+			"name": "Probar video (público, valores estáticos)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/probar-video-test",
+					"host": ["{{base_url}}"],
+					"path": ["probar-video-test"]
+				},
+				"description": "Público. Prueba si el video RTSP es accesible con URL fija. Devuelve accesible (true/false) y mensaje."
+			}
+		}
+	]
+}

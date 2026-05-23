@@ -1,0 +1,131 @@
+# AGENTE: Experto en Sistema de Gestión Hotelera
+
+Sistema hotelero modular (MVP): configuración del hotel, recepción (reservas, check-in/out, huéspedes), facturación (folios y pagos), housekeeping y reportes básicos.
+
+---
+
+## Perfil y Comportamiento
+
+- Desarrollo full-stack con **Laravel 10+** (PHP 8.x) y **Vue 3** (Composition API, Vite).
+- Enfoque: operación diaria de recepción, ocupación de habitaciones, cobro correcto vía folios y comunicación con limpieza.
+- Cambios mínimos y coherentes con el estilo existente.
+- Configuración: `config/hotel.php`.
+
+---
+
+## Dominio del negocio
+
+### Módulo 1 — Configuración del hotel (`hotel.configurar`)
+
+- **Tipos de habitación** (`room_types`): nombre, código, capacidad, amenidades JSON, precio base.
+- **Habitaciones** (`rooms`): número único, tipo, piso, estado (`disponible`, `ocupada`, `sucia`, `limpia`, `mantenimiento`).
+- **Tarifas** (`room_rates`, `season_rates`): precio por tipo, fin de semana, temporadas con multiplicador o precio fijo.
+- **Usuarios y roles**: Spatie Permission; roles base Administrador, Recepcionista, Housekeeping, **Cajero** (solo `pos.vender`).
+
+### Dashboard (`dashboard.ver`)
+
+- `GET /api/dashboard/resumen` — KPIs: llegadas/salidas, ocupación, folios abiertos, **reservas web pendientes** (lista), **ventas POS hoy/mes** y desglose por outlet.
+
+### Módulo 2 — Recepción
+
+- **Huéspedes** (`huespedes`): CRUD de datos de contacto e identificación.
+- **Reservaciones** (`reservations`): folio único, fechas check-in/out, tipo de habitación, estado (`pendiente`, `confirmada`, `check_in`, `check_out`, `cancelada`).
+- **Disponibilidad**: `GET /api/hotel/reservations/availability` — no sobreponer reservas activas en la misma habitación.
+- **Planning (calendario)**: `GET /api/hotel/planning/calendar` (eventos FullCalendar), `GET /api/hotel/planning/room-board?date=` (ocupación por habitación en un día). Vista: `/hotel/recepcion/planning`.
+- **Check-in / Check-out** (`stays`): asignación de habitación, folio automático al entrar; al salir habitación pasa a `sucia` y folio debe estar saldado.
+
+### Módulo 3 — Facturación
+
+- **Folio** por estancia: cargos (`folio_charges`) y pagos (`folio_payments`); saldo recalculado en `FolioService`.
+- Métodos de pago en `config/hotel.php`: efectivo, tarjeta, transferencia.
+- **Factura PDF:** `GET /api/hotel/folios/{folio}/invoice-pdf` (DomPDF, vista `pdf.folio_factura`). Al cerrar folio o tras check-out con saldo $0.
+
+### Rol Cajero
+
+- Permiso único: `pos.vender` — acceso a `/hotel/pos` y redirección automática al POS tras login.
+- Sin recepción, facturación, reportes ni configuración. Usuario demo: `cajero@gmail.com` (misma contraseña que el resto de usuarios de prueba).
+- Migración: `2026_05_26_100000_add_cajero_role.php`.
+
+### Módulo 5 — POS consumos (`pos.vender`, `pos.catalogo`)
+
+- Catálogo: `pos_outlets` → `pos_categories` → `pos_products` (restaurante, bar, tienda).
+- Venta: solo habitaciones con estancia activa y **folio abierto** (`GET /api/hotel/pos/rooms-in-house`).
+- Cargar: `POST /api/hotel/pos/charge-to-folio` crea líneas en `folio_charges` (`charge_type=pos`, `pos_product_id`).
+- Vista: `/hotel/pos`; catálogo admin: `/hotel/pos/catalogo`.
+
+### Módulo 4 — Housekeeping (`housekeeping.gestionar`)
+
+- Tablero por estado de habitación; actualización de estado en tiempo real vía API.
+- No marcar `disponible`/`limpia` si hay estancia activa en la habitación.
+
+### Módulo 5 — Reportes (`reportes.ver`)
+
+- Ocupación, ingresos por día y por tipo de habitación, llegadas y salidas del día.
+- **POS:** `GET /api/hotel/reports/pos-sales?from=&to=&outlet_id=` — ventas por día, por outlet, top productos y resumen (`PosReportService`). Vista: pestaña «POS consumos» en `/hotel/reportes`. Permiso: `reportes.ver` o `pos.catalogo`.
+- **Export CSV:** `GET /api/hotel/reports/pos-sales/export`, `GET /api/hotel/reports/revenue/export` (UTF-8 con BOM, compatible Excel).
+- **Correo reservas web:** al crear (`received`) y al confirmar (`confirmed`) en recepción — `WebReservationMail`, `ReservationNotificationService`. Variable `HOTEL_BOOKING_NOTIFY_EMAIL` en `.env`.
+
+### Módulo 7 — Reservas en línea (booking engine, API pública)
+
+- Rutas **sin auth** bajo `/api/booking/*`, throttle `public-booking`.
+- `GET /api/booking/config` — datos del hotel + reglas (`config/hotel.php` → `booking`).
+- `GET /api/booking/availability` — misma lógica de disponibilidad que recepción.
+- `POST /api/booking/reservations` — crea huésped (o reutiliza por email), reserva con `source=web`, `status=pendiente`, `online_reference`.
+- `GET /api/booking/reservations/lookup?folio&email` — consulta estado para el huésped.
+- Recepción confirma: `POST /api/hotel/reservations/{id}/confirm` (`OnlineBookingService::confirmWebReservation`) — envía correo de confirmación al huésped si el mail está configurado.
+- Vista pública Vue: `/reservar` (`meta.public`, layout auth). Repo: `BookingRepository.js`.
+- Columnas en `reservations`: `source` (`recepcion`|`web`), `online_reference`.
+
+---
+
+## Reglas técnicas
+
+### Backend
+
+- Controladores delgados; lógica en **Services** (`HotelPricingService`, `ReservationService`, `FolioService`, `OnlineBookingService`, `PosReportService`).
+- Validación en controladores con `$request->validate()` o FormRequest cuando crezca el flujo.
+- API bajo prefijo `/api/hotel/*`; auth `auth:sanctum`; permisos Spatie en rutas.
+
+### Frontend
+
+- `resources/js/src/repositories/HotelRepository.js` + `ApiService`.
+- Token en `localStorage` (`token`).
+- Tema global: `resources/js/src/assets/base/_color_variables.scss` + `resources/js/src/assets/sass/hotel.scss`.
+- Paleta: primario azul `#1e5f8a`, acento dorado `#c4a35a`, fondo `#f4f6f8`.
+- Semántica intuitiva: verde = disponible/activo, azul = confirmado/ocupado, ámbar = pendiente/sucio, rojo = mantenimiento/cancelado.
+- Vistas en `resources/js/src/views/hotel/`.
+
+### Convenciones
+
+- PHP/BD: snake_case; clases en inglés; UI en español.
+- JS/Vue: camelCase; componentes PascalCase en rutas de archivo.
+
+---
+
+## Documentación
+
+- `README.md` — inicio rápido
+- `docs/INSTALACION.md` — instalación, usuarios demo (`password`), Docker, variables `.env`
+- `docker/README.md` — compose MySQL + Apache + Vite
+- `scripts/setup.ps1` / `scripts/setup.sh` — instalación en un comando
+- `scripts/build-production.ps1` / `scripts/build-production.sh` — build prod (composer --no-dev, vite build, caches)
+- `.env.example` — variables hotel (`HOTEL_*`, `VITE_API_URL`, mail booking)
+- `docs/PRODUCCION.md` + `.env.production.example` — despliegue y checklist HTTPS
+
+## CI / Deploy
+
+- CI: `.github/workflows/ci.yml` — PHPUnit, `npm run build`, smoke build producción.
+- Deploy: `.github/workflows/deploy.yml` (prod), `deploy-staging.yml` (staging). Secrets `DEPLOY_*` / `STAGING_*`. Ver `docs/DEPLOY-GITHUB.md`.
+- Health: `GET /api/health` — monitoreo BD/app.
+- CI fallido: secret opcional `SLACK_WEBHOOK_URL`.
+
+## Pruebas automatizadas
+
+- Base: `tests/HotelTestCase.php` (`RefreshDatabase`, SQLite en memoria, usuario `admin@gmail.com`, seeders `HotelSeeder` + `PosSeeder`).
+- Feature: `tests/Feature/Hotel/` — flujo completo, booking web, reportes POS, dashboard.
+- Unit: `tests/Unit/ReservationServiceTest.php` — disponibilidad de habitación.
+- Ejecutar: `php artisan test`
+
+## Entregable típico de una feature
+
+Migración (si aplica) + modelo + servicio + controlador + rutas API + método en `HotelRepository` + vista Vue + permiso nuevo en migración/seeder si aplica + test Feature cuando el flujo sea crítico.

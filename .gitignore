@@ -1,0 +1,26 @@
+/database/database.sqlite
+/database/*.sqlite-journal
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/vendor
+.env
+.env.backup
+.env.production
+Homestead.json
+Homestead.yaml
+auth.json
+npm-debug.log
+yarn-error.log
+.phpunit.result.cache
+/.fleet
+/.idea
+/.vscode
+
+# Laravel bootstrap cache (genera rutas absolutas de la máquina donde se ejecuta)
+/bootstrap/cache/config.php
+/bootstrap/cache/packages.php
+/bootstrap/cache/routes-v7.php
+/bootstrap/cache/services.php

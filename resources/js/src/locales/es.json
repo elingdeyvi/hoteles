@@ -1,0 +1,51 @@
+{
+    "brand": {
+        "app_name": "Gestión hotelera",
+        "nav_title": "Hotel",
+        "logo_alt": "Sistema hotelero",
+        "default_page_title": "Gestión hotelera",
+        "meta_suffix": "Hotel"
+    },
+    "admin": {
+        "config_empresa": {
+            "nav": "Datos del hotel",
+            "breadcrumb_parent": "Administración",
+            "breadcrumb_current": "Datos del hotel",
+            "title": "Configuración del hotel",
+            "subtitle": "Datos generales y textos que aparecen en la factura PDF del folio. Los cambios se guardan en la base de datos.",
+            "save": "Guardar",
+            "saving": "Guardando...",
+            "reload": "Recargar",
+            "saved": "Configuración guardada.",
+            "load_error": "No se pudo cargar la configuración.",
+            "save_error": "No se pudo guardar.",
+            "section_general": "Datos generales (requeridos al guardar)",
+            "f_nombre_empresa": "Nombre / razón social",
+            "f_nombre_corto": "Nombre corto (código)",
+            "f_nombre_largo": "Nombre largo",
+            "f_rfc": "RFC",
+            "f_telefono": "Teléfono",
+            "f_email": "Correo",
+            "f_direccion": "Dirección (calle)",
+            "f_codigo_postal": "Código postal",
+            "f_ciudad": "Ciudad",
+            "f_estado": "Estado",
+            "f_pais": "País",
+            "f_sitio_web": "Sitio web (URL o vacío)",
+            "section_ticket_header": "Factura — encabezado",
+            "f_ticket_nombre": "Nombre en factura",
+            "f_ticket_rfc": "RFC en factura",
+            "f_ticket_domicilio": "Domicilio (calle y colonia)",
+            "f_ticket_cp_ciudad": "C.P. y ciudad, estado (una línea)",
+            "f_ticket_telefono": "Teléfono en factura",
+            "f_ticket_linea_folio": "Línea de folio / expedición",
+            "ticket_linea_folio_help": "Placeholders: {folio}, {fecha_hora}, {fecha}. Ejemplo: FOLIO: {folio} · {fecha_hora}",
+            "section_ticket_footer": "Factura — pie / políticas",
+            "f_ticket_footer": "Texto del pie (una línea por renglón)",
+            "ticket_footer_help": "Placeholders: {folio}, {fecha_hora}, {fecha}, {cliente}, {total}, {recepcionista}.",
+            "section_legal_optional": "Términos y aviso (opcional)",
+            "f_terminos": "Términos y condiciones",
+            "f_politica": "Política de privacidad"
+        }
+    }
+}

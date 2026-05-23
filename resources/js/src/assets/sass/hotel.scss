@@ -1,0 +1,126 @@
+@import '../base/color_variables';
+
+// —— Tema hotel: colores intuitivos por contexto operativo ——
+
+.hotel-panel,
+.panel.hotel-panel {
+  border-radius: 12px;
+  border: 1px solid rgba(30, 95, 138, 0.12);
+  box-shadow: 0 4px 20px rgba(26, 47, 66, 0.06);
+  background: $white;
+}
+
+.hotel-stat-card {
+  border-left: 4px solid $primary;
+  background: linear-gradient(135deg, $l-primary 0%, $white 100%);
+  &.border-warning {
+    border-left-color: #b45309;
+    background: linear-gradient(135deg, #fef3c7 0%, $white 100%);
+  }
+  &.border-danger {
+    border-left-color: $danger;
+    background: linear-gradient(135deg, $l-danger 0%, $white 100%);
+  }
+}
+
+// Estados de habitación (housekeeping / planning)
+.room-status-badge {
+  font-weight: 600;
+  text-transform: capitalize;
+  &.disponible { background: $l-success; color: darken($success, 18%); }
+  &.ocupada { background: $l-primary; color: $primary; }
+  &.sucia { background: #fef3c7; color: #b45309; }
+  &.limpia { background: $l-info; color: darken($info, 28%); }
+  &.mantenimiento { background: $l-danger; color: $danger; }
+}
+
+// Estados de reserva
+.reservation-status {
+  &.pendiente { background: #e2e8f0; color: #475569; }
+  &.confirmada { background: $l-primary; color: $primary; }
+  &.check_in { background: $l-success; color: darken($success, 18%); }
+  &.check_out { background: $l-secondary; color: darken($secondary, 25%); }
+  &.cancelada { background: $l-danger; color: $danger; }
+}
+
+// Folio
+.folio-status-abierto { background: #fef3c7; color: #b45309; }
+.folio-status-cerrado { background: $l-success; color: darken($success, 18%); }
+
+// Tablas y paneles legacy del template
+.panel {
+  border-radius: 10px;
+  border-color: rgba(30, 95, 138, 0.1);
+}
+
+.table-hover tbody tr:hover {
+  background-color: $l-primary;
+}
+
+// Reservas en línea (público)
+.booking-public {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+.booking-hero h1 {
+  color: $primary;
+  font-weight: 700;
+}
+.booking-logo {
+  max-height: 56px;
+}
+.booking-card {
+  border-radius: 12px;
+  border: 1px solid rgba(30, 95, 138, 0.12);
+  box-shadow: 0 4px 16px rgba(26, 47, 66, 0.06);
+}
+.booking-tabs .nav-link {
+  color: $primary;
+  &.active {
+    background: $primary;
+    color: $white;
+  }
+}
+.room-type-option {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  &:hover:not(.disabled) {
+    border-color: rgba($primary, 0.4);
+  }
+  &.selected {
+    border-color: $primary;
+    box-shadow: 0 0 0 3px rgba($primary, 0.15);
+  }
+  &.disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+.booking-success {
+  border-color: rgba($success, 0.35);
+  background: linear-gradient(180deg, $l-success 0%, $white 40%);
+}
+
+// FullCalendar (planning)
+.fc {
+  --fc-border-color: #e2e8f0;
+  --fc-button-bg-color: #{$primary};
+  --fc-button-border-color: #{$primary};
+  --fc-button-hover-bg-color: #164a6e;
+  --fc-button-hover-border-color: #164a6e;
+  --fc-today-bg-color: #{$l-primary};
+  --fc-event-border-color: transparent;
+}
+
+// Auth login
+.auth-cover .form-form-wrap h1 {
+  color: $dark;
+}
+
+// Enlaces y acentos secundarios (dorado = acción destacada secundaria)
+.text-hotel-accent {
+  color: $secondary !important;
+}

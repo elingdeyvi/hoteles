@@ -1,0 +1,51 @@
+{
+    "brand": {
+        "app_name": "Hotel management",
+        "nav_title": "Hotel",
+        "logo_alt": "Hotel management system",
+        "default_page_title": "Hotel management",
+        "meta_suffix": "Hotel"
+    },
+    "admin": {
+        "config_empresa": {
+            "nav": "Hotel profile",
+            "breadcrumb_parent": "Administration",
+            "breadcrumb_current": "Hotel profile",
+            "title": "Hotel settings",
+            "subtitle": "General data and copy shown on folio invoice PDFs. Changes are stored in the database.",
+            "save": "Save",
+            "saving": "Saving...",
+            "reload": "Reload",
+            "saved": "Settings saved.",
+            "load_error": "Could not load settings.",
+            "save_error": "Could not save.",
+            "section_general": "General (required to save)",
+            "f_nombre_empresa": "Name / legal name",
+            "f_nombre_corto": "Short name (code)",
+            "f_nombre_largo": "Long name",
+            "f_rfc": "Tax ID (RFC)",
+            "f_telefono": "Phone",
+            "f_email": "Email",
+            "f_direccion": "Address (street)",
+            "f_codigo_postal": "Postal code",
+            "f_ciudad": "City",
+            "f_estado": "State",
+            "f_pais": "Country",
+            "f_sitio_web": "Website (URL or empty)",
+            "section_ticket_header": "Invoice — header",
+            "f_ticket_nombre": "Name on invoice",
+            "f_ticket_rfc": "Tax ID on invoice",
+            "f_ticket_domicilio": "Street & neighborhood",
+            "f_ticket_cp_ciudad": "Postal code, city, state (one line)",
+            "f_ticket_telefono": "Phone on invoice",
+            "f_ticket_linea_folio": "Folio / issue line",
+            "ticket_linea_folio_help": "Placeholders: {folio}, {fecha_hora}, {fecha}. Example: FOLIO: {folio} · {fecha_hora}",
+            "section_ticket_footer": "Invoice — footer / policies",
+            "f_ticket_footer": "Footer text (one line per row)",
+            "ticket_footer_help": "Placeholders: {folio}, {fecha_hora}, {fecha}, {cliente}, {total}, {recepcionista}.",
+            "section_legal_optional": "Terms & privacy (optional)",
+            "f_terminos": "Terms and conditions",
+            "f_politica": "Privacy policy"
+        }
+    }
+}
