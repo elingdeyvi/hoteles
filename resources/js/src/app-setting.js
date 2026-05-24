@@ -26,9 +26,16 @@ export default {
         }
         store.commit("toggleDarkMode", val);
 
-        val = localStorage.getItem("menu_style"); // vertical, collapsible-vertical, horizontal
+        val = localStorage.getItem("menu_style");
         if (!val) {
             val = $themeConfig.navigation;
+        }
+        // Corrección única: menú vertical completo (evita barra estrecha con texto cortado)
+        const menuFixKey = "menu_style_vertical_fix_v1";
+        if (!localStorage.getItem(menuFixKey)) {
+            val = "vertical";
+            localStorage.setItem("menu_style", val);
+            localStorage.setItem(menuFixKey, "1");
         }
         store.commit("toggleMenuStyle", val);
 

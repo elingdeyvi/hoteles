@@ -37,7 +37,7 @@ docker compose exec apache php artisan key:generate --force
 docker compose exec apache php artisan migrate --seed
 ```
 
-El seeder carga hotel de demo (**Hotel Costa Azul**), habitaciones, catálogo POS y usuarios con contraseña **`password`**.
+El seeder carga hotel de demo (**Hotel Costa Azul**), habitaciones, catálogo POS y usuarios con contraseña **`12345678`**.
 
 ## Servicios
 

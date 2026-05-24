@@ -63,7 +63,7 @@ class HotelAboutCommand extends Command
         }
 
         $this->newLine();
-        $this->comment('Usuarios demo (contraseña: password tras db:seed)');
+        $this->comment('Usuarios demo (contraseña: 12345678 tras db:seed)');
         $this->table(['Email', 'Rol'], [
             ['admin@gmail.com', 'Administrador'],
             ['recepcionista@gmail.com', 'Recepcionista'],

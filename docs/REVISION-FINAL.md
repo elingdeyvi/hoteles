@@ -5,7 +5,7 @@ Use esta lista antes de entregar o desplegar a producción.
 ## Funcional
 
 - [ ] `php artisan migrate --seed` sin errores
-- [ ] Login con `admin@gmail.com` / `password`
+- [ ] Login con `admin@gmail.com` / `12345678`
 - [ ] Flujo: reserva → check-in → POS → pago → check-out
 - [ ] Reserva web en `/reservar` y confirmación en recepción
 - [ ] `GET /api/health` responde 200

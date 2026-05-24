@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             SierraPropertySeeder::class,
             DemoUsersPasswordSeeder::class,
             PropertyUserSeeder::class,
+            DemoOperationalDataSeeder::class,
         ]);
     }
 }

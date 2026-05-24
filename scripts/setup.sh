@@ -73,7 +73,7 @@ php artisan hotel:preflight
 echo ""
 echo "=== Listo ==="
 echo ""
-echo "Usuarios demo (contraseña: password):"
+echo "Usuarios demo (contraseña: 12345678):"
 echo "  admin@gmail.com          — Administrador"
 echo "  recepcionista@gmail.com  — Recepcionista"
 echo "  housekeeping@gmail.com   — Housekeeping"

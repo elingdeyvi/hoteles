@@ -90,7 +90,7 @@ Abre la app (Vite + Laravel según tu setup) y entra en `/auth/login`.
 
 ## Usuarios de demostración
 
-Tras `migrate --seed`, la contraseña de todos los usuarios demo es: **`password`**
+Tras `migrate --seed`, la contraseña de todos los usuarios demo es: **`12345678`**
 
 | Email | Rol | Uso principal |
 |-------|-----|----------------|

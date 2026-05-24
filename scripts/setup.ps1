@@ -59,7 +59,7 @@ php artisan hotel:about
 php artisan hotel:preflight
 
 Write-Host "`n=== Listo ===`n" -ForegroundColor Green
-Write-Host "Usuarios demo (contraseña: password):"
+Write-Host "Usuarios demo (contraseña: 12345678):"
 Write-Host "  admin@gmail.com          — Administrador"
 Write-Host "  recepcionista@gmail.com  — Recepcionista"
 Write-Host "  housekeeping@gmail.com   — Housekeeping"

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ConfiguracionEmpresa;
+use App\Support\BrandAssets;
 use App\Services\BookingPaymentService;
 use App\Services\OnlineBookingService;
 use Carbon\Carbon;
@@ -31,7 +32,9 @@ class PublicBookingController extends Controller
                     'telefono' => $empresa?->telefono,
                     'email' => $empresa?->email,
                     'direccion' => $empresa?->direccion,
-                    'logo_url' => $empresa?->logo_url ?? null,
+                    'logo_url' => $empresa?->logo_url ?? BrandAssets::logoUrl($empresa?->property?->code),
+                    'color_primario' => $empresa?->color_primario ?? BrandAssets::primaryColor($empresa?->property?->code),
+                    'color_secundario' => $empresa?->color_secundario ?? '#64748b',
                 ],
                 'booking' => [
                     'min_advance_days' => (int) config('hotel.booking.min_advance_days', 0),

@@ -12,7 +12,7 @@ class ConfiguracionEmpresaSeeder extends Seeder
     {
         $propertyId = Property::query()->where('code', 'costa-azul')->value('id');
 
-        ConfiguracionEmpresa::query()->firstOrCreate(
+        ConfiguracionEmpresa::query()->updateOrCreate(
             ['property_id' => $propertyId],
             [
                 'nombre_empresa' => 'Hotel Costa Azul',
@@ -22,6 +22,8 @@ class ConfiguracionEmpresaSeeder extends Seeder
             'telefono' => '555-0100',
             'email' => 'recepcion@costaazul.demo',
             'direccion' => 'Av. del Mar 100, Playa Norte',
+            'color_primario' => '#1a365d',
+            'color_secundario' => '#64748b',
         ]);
     }
 }

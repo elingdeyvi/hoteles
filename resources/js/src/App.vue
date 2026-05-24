@@ -4,9 +4,10 @@
     </div>
 </template>
 <script setup>
-    import { computed } from "vue";
+    import { computed, onMounted } from "vue";
 
     import "./assets/sass/app.scss";
+    import { applyDocumentFavicon } from "./composables/use-branding";
 
     import { useMeta } from "./composables/use-meta";
     import { useStore } from "vuex";
@@ -27,14 +28,13 @@
             classes.push(store.state.layout_style);
         }
         if (store.state.menu_style) {
-            // Si layout_style es "full" y menu_style es "vertical", usar "collapsible-vertical"
-            if (store.state.layout_style === "full" && store.state.menu_style === "vertical") {
-                classes.push("collapsible-vertical");
-            } else {
-                classes.push(store.state.menu_style);
-            }
+            classes.push(store.state.menu_style);
         }
         return classes;
+    });
+
+    onMounted(() => {
+        applyDocumentFavicon('/favicon.svg');
     });
 </script>
 <script>

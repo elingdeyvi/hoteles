@@ -50,7 +50,7 @@ Documentación: [docs/INSTALACION.md](docs/INSTALACION.md)
 
 ## Usuarios demo
 
-Contraseña (todos): **`password`**
+Contraseña (todos): **`12345678`**
 
 | Usuario | Rol |
 |---------|-----|

@@ -8,7 +8,8 @@
 
     <title>{{ config('app.name') }} — Gestión hotelera</title>
 
-    <link rel="shortcut icon" href="{{ asset('favicon.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+    <link rel="shortcut icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
 
     <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
     @vite(['resources/js/src/main.js'])

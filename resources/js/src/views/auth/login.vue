@@ -5,6 +5,9 @@
                 <div class="form-form-wrap">
                     <div class="form-container">
                         <div class="form-content">
+                            <div class="auth-brand mb-4">
+                                <img :src="logoUrl" alt="Logo" class="auth-logo" />
+                            </div>
                             <h1 class="">
                                 Iniciar sesión
                             </h1>
@@ -94,13 +97,19 @@
 
 <script setup>
     import "../../assets/sass/authentication/auth.scss";
-    import { ref, onMounted, computed, watch } from "vue";
+    import { ref, onMounted, computed } from "vue";
     import * as AuthRepository from "@/repositories/AuthRepository";
     import { useMeta } from "../../composables/use-meta";
     import Loading from 'vue-loading-overlay';
     import 'vue-loading-overlay/dist/css/index.css';
-    import store from '../../store';
+    import defaultLogo from '@/assets/images/logo.svg';
+    import { useConfiguracionEmpresaStore } from '@/store/ConfiguracionEmpresaStore';
+    import { applyDocumentFavicon } from '@/composables/use-branding';
+
     useMeta({ title: "Iniciar sesión" });
+
+    const configuracionStore = useConfiguracionEmpresaStore();
+    const logoUrl = computed(() => configuracionStore.getLogoUrl || defaultLogo);
 
     const passwordField = ref("password");
     const form = ref({
@@ -133,8 +142,21 @@
         }
     };
 
-    onMounted(async ()=>{
-        isLoading.value=false;
-        console.log(import.meta.env.VITE_API_URL,'import.meta.env.VITE_API_URL');
+    onMounted(async () => {
+        isLoading.value = false;
+        try {
+            await configuracionStore.cargarConfiguracionPublica();
+            applyDocumentFavicon(configuracionStore.getFaviconUrl);
+        } catch (_) {
+            applyDocumentFavicon('/favicon.svg');
+        }
     });
 </script>
+
+<style scoped>
+.auth-logo {
+    max-height: 48px;
+    max-width: 240px;
+    object-fit: contain;
+}
+</style>

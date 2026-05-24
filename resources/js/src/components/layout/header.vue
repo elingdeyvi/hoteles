@@ -238,7 +238,7 @@
     import Loading from "vue-loading-overlay";
     import "vue-loading-overlay/dist/css/index.css";
     // Logo por defecto como asset importado: Vite lo sirve con URL válida y evita que Laravel devuelva HTML
-    import defaultLogoAsset from '@/assets/images/logo.png';
+    import defaultLogoAsset from '@/assets/images/logo.svg';
     import defaultUsers from '@/assets/images/user-avtar.svg';
 
     import { useProperty } from '@/composables/use-property';

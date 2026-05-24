@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia';
 import * as ConfiguracionEmpresaRepository from '@/repositories/ConfiguracionEmpresaRepository';
-import defaultLogo from '@/assets/images/logo.png';
+import defaultLogo from '@/assets/images/logo.svg';
+import { applyDocumentFavicon } from '@/composables/use-branding';
+
+const DEFAULT_FAVICON = '/favicon.svg';
 
 export const useConfiguracionEmpresaStore = defineStore('configuracionEmpresa', {
     state: () => ({
@@ -19,7 +22,7 @@ export const useConfiguracionEmpresaStore = defineStore('configuracionEmpresa', 
         getMensajeDescripcion: (state) => state.configuracion.mensaje_descripcion || 'Servicio de lavandería y tintorería con calidad y puntualidad.',
         getMensajeAlerta: (state) => state.configuracion.mensaje_alerta || '¡Gracias por confiar en nosotros!',
         getIconoMensajeUrl: (state) => state.configuracion.icono_mensaje_url || '',
-        getFaviconUrl: (state) => state.configuracion.favicon_url || ''
+        getFaviconUrl: (state) => state.configuracion.favicon_url || DEFAULT_FAVICON
     },
 
     actions: {
@@ -35,6 +38,8 @@ export const useConfiguracionEmpresaStore = defineStore('configuracionEmpresa', 
                 if (response.data.logo_url) {
                     this.logoUrl = response.data.logo_url;
                 }
+
+                applyDocumentFavicon(response.data.favicon_url || DEFAULT_FAVICON);
 
                 this.isLoaded = true;
             } catch (error) {
@@ -55,6 +60,8 @@ export const useConfiguracionEmpresaStore = defineStore('configuracionEmpresa', 
                 if (response.data.logo_url) {
                     this.logoUrl = response.data.logo_url;
                 }
+
+                applyDocumentFavicon(response.data.favicon_url || DEFAULT_FAVICON);
 
                 this.isLoaded = true;
             } catch (error) {
@@ -101,6 +108,7 @@ export const useConfiguracionEmpresaStore = defineStore('configuracionEmpresa', 
             try {
                 const response = await ConfiguracionEmpresaRepository.uploadFavicon(formData);
                 this.configuracion = response.data;
+                applyDocumentFavicon(response.data.favicon_url || DEFAULT_FAVICON);
                 return response;
             } catch (error) {
                 console.error('Error subiendo favicon:', error);

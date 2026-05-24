@@ -1,8 +1,10 @@
 import { createApp } from "vue";
+import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
 import store from "./store";
 const app = createApp(App);
+const pinia = createPinia();
 
 // bootstrap
 import * as bootstrap from "bootstrap";
@@ -57,4 +59,4 @@ window.$appSetting.init();
 import VueEasymde from 'vue3-easymde';
 import "easymde/dist/easymde.min.css";
 
-app.use(store).use(router).use(i18n).use(PerfectScrollbar).use(VueNouislider).use(Maska).use(ClientTable).use(vue3JsonExcel).use(VueFormWizard).use(head).use(VueEasymde).mount("#app");
+app.use(pinia).use(store).use(router).use(i18n).use(PerfectScrollbar).use(VueNouislider).use(Maska).use(ClientTable).use(vue3JsonExcel).use(VueFormWizard).use(head).use(VueEasymde).mount("#app");

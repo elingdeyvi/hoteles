@@ -18,7 +18,7 @@ return new class extends Migration
             $user = User::create([
                 'name' => 'Cajero POS',
                 'email' => 'cajero@gmail.com',
-                'password' => '$2y$10$jOunoLNJ1KJ5MK3smYZ0q./c.PnQYnM4BAd0rikaRBAmGYveG8ydK',
+                'password' => '$2y$10$Jw7g09HFRLFO3kSJ3ylb1.9F6Il/ZToDF6uQOEeUZ5LRIC0b1WJPi',
                 'email_verified_at' => now(),
             ]);
             $user->assignRole($cajero);

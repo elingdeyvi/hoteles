@@ -1,5 +1,5 @@
 <template>
-  <div class="booking-public">
+  <div class="booking-public" :style="bookingThemeStyle">
     <div class="booking-hero text-center mb-4">
       <img v-if="hotel.logo_url" :src="hotel.logo_url" alt="" class="booking-logo mb-2" />
       <h1 class="mb-1">{{ hotel.nombre || 'Reservar en línea' }}</h1>
@@ -153,9 +153,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { createBookingRepository } from '@/repositories/BookingRepository';
+import { applyBookingTheme, clearBookingTheme } from '@/composables/use-branding';
 
 const route = useRoute();
 const propertySlug = computed(() => route.params.propertySlug || 'costa-azul');
@@ -199,6 +200,19 @@ const depositPercent = computed(() => bookingRules.value.payments?.deposit_perce
 const isDemoPayment = computed(() => bookingRules.value.payments?.provider === 'demo');
 const paymentPending = computed(() => !!pendingPayment.value?.required);
 
+const bookingThemeStyle = computed(() => {
+  const primary = hotel.value.color_primario || '#1a365d';
+  const secondary = hotel.value.color_secundario || '#64748b';
+  return {
+    '--booking-primary': primary,
+    '--booking-secondary': secondary,
+  };
+});
+
+function syncBookingTheme() {
+  applyBookingTheme(hotel.value.color_primario, hotel.value.color_secundario);
+}
+
 function depositPreview(total) {
   const pct = depositPercent.value;
   return Math.max(1, (Number(total) * pct) / 100).toFixed(2);
@@ -209,6 +223,7 @@ async function loadConfig() {
   hotel.value = res.data?.hotel || {};
   bookingRules.value = res.data?.booking || {};
   confirmationNote.value = res.data?.booking?.confirmation_note || '';
+  syncBookingTheme();
 }
 
 async function searchAvailability() {
@@ -337,5 +352,9 @@ async function doLookup() {
 onMounted(async () => {
   await loadConfig();
   handleReturnQuery();
+});
+
+onUnmounted(() => {
+  clearBookingTheme();
 });
 </script>

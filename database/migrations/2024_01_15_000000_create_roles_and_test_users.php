@@ -48,21 +48,21 @@ return new class extends Migration
         $adminUser = User::create([
             'name' => 'Administrador',
             'email' => 'admin@gmail.com',
-            'password' => '$2y$10$jOunoLNJ1KJ5MK3smYZ0q./c.PnQYnM4BAd0rikaRBAmGYveG8ydK',
+            'password' => '$2y$10$Jw7g09HFRLFO3kSJ3ylb1.9F6Il/ZToDF6uQOEeUZ5LRIC0b1WJPi',
             'email_verified_at' => now(),
         ]);
 
         $recepcionistaUser = User::create([
             'name' => 'Recepcionista',
             'email' => 'recepcionista@gmail.com',
-            'password' => '$2y$10$jOunoLNJ1KJ5MK3smYZ0q./c.PnQYnM4BAd0rikaRBAmGYveG8ydK',
+            'password' => '$2y$10$Jw7g09HFRLFO3kSJ3ylb1.9F6Il/ZToDF6uQOEeUZ5LRIC0b1WJPi',
             'email_verified_at' => now(),
         ]);
 
         $housekeepingUser = User::create([
             'name' => 'Housekeeping',
             'email' => 'housekeeping@gmail.com',
-            'password' => '$2y$10$jOunoLNJ1KJ5MK3smYZ0q./c.PnQYnM4BAd0rikaRBAmGYveG8ydK',
+            'password' => '$2y$10$Jw7g09HFRLFO3kSJ3ylb1.9F6Il/ZToDF6uQOEeUZ5LRIC0b1WJPi',
             'email_verified_at' => now(),
         ]);
 

@@ -26,7 +26,7 @@ class SierraPropertySeeder extends Seeder
             ]
         );
 
-        ConfiguracionEmpresa::query()->firstOrCreate(
+        ConfiguracionEmpresa::query()->updateOrCreate(
             ['property_id' => $property->id],
             [
                 'nombre_empresa' => 'Hotel Sierra Verde',
@@ -36,6 +36,8 @@ class SierraPropertySeeder extends Seeder
                 'telefono' => '555-0200',
                 'email' => 'recepcion@sierraverde.demo',
                 'direccion' => 'Carretera Montaña Km 12, Valle Alto',
+                'color_primario' => '#1e4d3a',
+                'color_secundario' => '#64748b',
             ]
         );
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use App\Support\BrandAssets;
 
 class ConfiguracionEmpresa extends Model
 {
@@ -32,6 +33,8 @@ class ConfiguracionEmpresa extends Model
         'logo_mime_type',
         'logo_size_bytes',
         'favicon_path',
+        'color_primario',
+        'color_secundario',
         'terminos_condiciones',
         'ticket_encabezado_nombre',
         'ticket_encabezado_rfc',
@@ -80,14 +83,27 @@ class ConfiguracionEmpresa extends Model
     }
 
     /**
+     * Hotel al que pertenece esta configuración.
+     */
+    public function property()
+    {
+        return $this->belongsTo(Property::class);
+    }
+
+    /**
      * Accessor para obtener la URL completa del logo
      */
     public function getLogoUrlAttribute()
     {
-        if ($this->logo_path) {
-            return asset(str_replace("public", "storage", $this->logo_path));
+        if ($this->logo_path && Storage::exists($this->logo_path)) {
+            return asset(str_replace('public', 'storage', $this->logo_path));
         }
-        return null;
+
+        $code = $this->relationLoaded('property')
+            ? $this->property?->code
+            : ($this->property_id ? Property::query()->whereKey($this->property_id)->value('code') : null);
+
+        return BrandAssets::logoUrl($code);
     }
 
     /**
@@ -95,10 +111,11 @@ class ConfiguracionEmpresa extends Model
      */
     public function getFaviconUrlAttribute()
     {
-        if ($this->favicon_path) {
-            return asset(str_replace("public", "storage", $this->favicon_path));
+        if ($this->favicon_path && Storage::exists($this->favicon_path)) {
+            return asset(str_replace('public', 'storage', $this->favicon_path));
         }
-        return null;
+
+        return BrandAssets::faviconUrl();
     }
 
     /**
@@ -218,10 +235,13 @@ class ConfiguracionEmpresa extends Model
         $propertyId = $propertyId ?? \App\Support\CurrentProperty::id();
 
         if ($propertyId) {
-            return self::where('property_id', $propertyId)->activa()->first()
-                ?? self::where('property_id', $propertyId)->first();
+            return self::with('property')
+                ->where('property_id', $propertyId)
+                ->activa()
+                ->first()
+                ?? self::with('property')->where('property_id', $propertyId)->first();
         }
 
-        return self::activa()->first();
+        return self::with('property')->activa()->first();
     }
 }

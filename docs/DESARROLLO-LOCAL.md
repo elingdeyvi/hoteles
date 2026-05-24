@@ -72,7 +72,7 @@ npm run dev
 
 ## Usuarios demo
 
-Contraseña (todos): **`password`**
+Contraseña (todos): **`12345678`**
 
 | Email | Rol |
 |-------|-----|

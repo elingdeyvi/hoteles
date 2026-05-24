@@ -28,7 +28,7 @@
         </li>
 
         <li class="menu" v-if="can('pos.vender')">
-          <router-link to="/hotel/pos" @click="toggleMobileMenu">
+          <router-link to="/hotel/pos" class="dropdown-toggle" @click="toggleMobileMenu">
             <div>
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="feather feather-shopping-bag"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
               <span>POS consumos</span>
@@ -37,7 +37,7 @@
         </li>
 
         <li class="menu" v-if="canAny(['facturacion.folios', 'facturacion.pagos'])">
-          <router-link to="/hotel/facturacion/folios" @click="toggleMobileMenu">
+          <router-link to="/hotel/facturacion/folios" class="dropdown-toggle" @click="toggleMobileMenu">
             <div>
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="feather feather-credit-card"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
               <span>Facturación</span>
@@ -46,7 +46,7 @@
         </li>
 
         <li class="menu" v-if="can('housekeeping.gestionar')">
-          <router-link to="/hotel/housekeeping" @click="toggleMobileMenu">
+          <router-link to="/hotel/housekeeping" class="dropdown-toggle" @click="toggleMobileMenu">
             <div>
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle></svg>
               <span>Housekeeping</span>
@@ -58,7 +58,7 @@
           <a class="dropdown-toggle" data-bs-toggle="collapse" data-bs-target="#configHotel">
             <div>
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="feather feather-settings"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-              <span>Configuración hotel</span>
+              <span>Configuración</span>
             </div>
             <div><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
           </a>
@@ -72,7 +72,7 @@
         </li>
 
         <li class="menu" v-if="can('reportes.ver')">
-          <router-link to="/hotel/reportes" @click="toggleMobileMenu">
+          <router-link to="/hotel/reportes" class="dropdown-toggle" @click="toggleMobileMenu">
             <div>
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="feather feather-bar-chart-2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
               <span>Reportes</span>
@@ -99,15 +99,34 @@
 </template>
 
 <script setup>
+import { onMounted, ref } from 'vue';
 import { usePermissions } from '@/composables/use-permissions';
 import { useStore } from 'vuex';
 
 const store = useStore();
-const { can, canAny } = usePermissions();
+const { loadPermissions, hasPermission, hasAnyPermission } = usePermissions();
+const permissionsReady = ref(false);
+
+const can = (permission) => {
+  if (!permissionsReady.value) return false;
+  return hasPermission(permission);
+};
+
+const canAny = (permissions) => {
+  if (!permissionsReady.value) return false;
+  return hasAnyPermission(permissions);
+};
 
 function toggleMobileMenu() {
   if (window.innerWidth < 991) {
     store.commit('toggleSideBar', !store.state.is_show_sidebar);
   }
 }
+
+onMounted(async () => {
+  if (window.localStorage.getItem('token')) {
+    await loadPermissions();
+  }
+  permissionsReady.value = true;
+});
 </script>

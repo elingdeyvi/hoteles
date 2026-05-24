@@ -10,7 +10,7 @@ class DemoUsersPasswordSeeder extends Seeder
 {
     public function run(): void
     {
-        $password = Hash::make('password');
+        $password = Hash::make('12345678');
 
         User::query()
             ->whereIn('email', [

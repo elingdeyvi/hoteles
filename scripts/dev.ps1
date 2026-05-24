@@ -12,6 +12,8 @@ if (-not (Test-Path (Join-Path $Root ".env"))) {
 
 if (-not (Test-Path (Join-Path $Root "public\build\manifest.json"))) {
     Write-Host "AVISO: falta public/build/manifest.json — ejecute npm run build" -ForegroundColor Yellow
+} elseif (Test-Path (Join-Path $Root "public\hot")) {
+    Write-Host "AVISO: existe public/hot (Vite dev). Si solo usa php artisan serve, ejecute npm run build." -ForegroundColor Yellow
 }
 
 Write-Host "`n=== Dev hotel ===" -ForegroundColor Cyan

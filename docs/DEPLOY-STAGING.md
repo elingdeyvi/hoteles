@@ -81,7 +81,7 @@ php artisan hotel:preflight
 
 Checklist manual:
 
-- [ ] Login `admin@gmail.com` / `password`
+- [ ] Login `admin@gmail.com` / `12345678`
 - [ ] Selector de hotel muestra **Costa Azul** y **Sierra Verde**
 - [ ] Reserva web en `/reservar/sierra-verde`
 - [ ] Flujo recepción en un hotel asignado (`recepcionista@gmail.com`)

@@ -76,7 +76,7 @@ export default new createStore({
             localStorage.setItem("menu_style", value);
             state.menu_style = value;
             if (!value || value === "vertical") {
-                state.is_show_sidebar = false;
+                state.is_show_sidebar = true;
             } else if (value === "collapsible-vertical") {
                 state.is_show_sidebar = false;
             }

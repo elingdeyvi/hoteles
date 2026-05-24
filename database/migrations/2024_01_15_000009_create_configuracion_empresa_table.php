@@ -33,8 +33,8 @@ return new class extends Migration
             $table->string('logo_mime_type')->nullable(); // Tipo MIME del logo
             $table->integer('logo_size_bytes')->nullable(); // Tamano del archivo en bytes
             $table->string('favicon_path')->nullable(); // Ruta del favicon
-            $table->string('color_primario', 7)->default('#0d6efd'); // Tema panel (primario)
-            $table->string('color_secundario', 7)->default('#6c757d'); // Tema panel (secundario)
+            $table->string('color_primario', 7)->default('#1a365d'); // Tema panel (primario)
+            $table->string('color_secundario', 7)->default('#64748b'); // Tema panel (secundario)
             $table->text('terminos_condiciones')->nullable();
             $table->text('politica_privacidad')->nullable();
             $table->boolean('activo')->default(true);
