@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 
 class FolioService
 {
+    public function __construct(private readonly CajaService $caja) {}
     public function createForStay(Stay $stay, float $roomCharge): Folio
     {
         $folio = Folio::create([
@@ -47,12 +48,15 @@ class FolioService
 
     public function registerPayment(Folio $folio, string $method, float $amount, ?int $userId, ?string $reference = null): FolioPayment
     {
+        $apertura = $this->caja->exigir('cobro');
+
         $payment = FolioPayment::create([
             'folio_id' => $folio->id,
             'payment_method' => $method,
             'amount' => $amount,
             'reference' => $reference,
             'received_by' => $userId,
+            'apertura_caja_id' => $apertura->id,
         ]);
 
         $this->recalculateBalance($folio);

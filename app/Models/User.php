@@ -3,17 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use LaravelAndVueJS\Traits\LaravelPermissionToVueJS;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasApiTokens;
-    use HasFactory;
-    use HasRoles;
-    use LaravelPermissionToVueJS;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     public const ADMIN_ROL = 'Administrador';
 
@@ -21,10 +19,13 @@ class User extends Authenticatable
 
     public const HOUSEKEEPING_ROL = 'Housekeeping';
 
+    public const CAJERO_ROL = 'Cajero';
+
     public const ROLES = [
         self::ADMIN_ROL,
         self::RECEPCIONISTA_ROL,
         self::HOUSEKEEPING_ROL,
+        self::CAJERO_ROL,
     ];
 
     protected $fillable = [
@@ -32,12 +33,23 @@ class User extends Authenticatable
         'email',
         'password',
         'estatus',
-        'autorizado',
-        'nota',
         'uuid',
     ];
 
-    public function properties()
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
+    }
+
+    public function properties(): BelongsToMany
     {
         return $this->belongsToMany(Property::class)
             ->withPivot('is_default')
@@ -77,8 +89,8 @@ class User extends Authenticatable
         return in_array($propertyId, $this->accessiblePropertyIds(), true);
     }
 
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    public function scopeActivos($query)
+    {
+        return $query->where('estatus', 'activo');
+    }
 }

@@ -8,8 +8,10 @@ use App\Models\Stay;
 use App\Services\FolioService;
 use App\Services\ReservationService;
 use Carbon\Carbon;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class CheckInOutController extends Controller
 {
@@ -18,10 +20,30 @@ class CheckInOutController extends Controller
         private readonly FolioService $folios
     ) {}
 
-    public function checkIn(Request $request, Reservation $reservation): JsonResponse
+    public function show(Reservation $reservation): Response
+    {
+        $reservation->load(['huesped', 'roomType', 'room', 'stays.folio']);
+        $checkIn = Carbon::parse($reservation->check_in);
+        $checkOut = Carbon::parse($reservation->check_out);
+
+        $rooms = Room::query()
+            ->where('room_type_id', $reservation->room_type_id)
+            ->where('is_active', true)
+            ->orderBy('number')
+            ->get()
+            ->filter(fn (Room $room) => $this->reservations->isRoomAvailable($room, $checkIn, $checkOut, $reservation->id))
+            ->values();
+
+        return Inertia::render('Hotel/CheckIn', [
+            'reservation' => $reservation,
+            'availableRooms' => $rooms,
+        ]);
+    }
+
+    public function checkIn(Request $request, Reservation $reservation): RedirectResponse
     {
         if (in_array($reservation->status, ['cancelada', 'check_out'], true)) {
-            return response()->json(['message' => 'Reserva no válida para check-in.'], 422);
+            return back()->with('error', 'Reserva no válida para check-in.');
         }
 
         $data = $request->validate([
@@ -33,7 +55,7 @@ class CheckInOutController extends Controller
         $checkOut = Carbon::parse($reservation->check_out);
 
         if (! $this->reservations->isRoomAvailable($room, $checkIn, $checkOut, $reservation->id)) {
-            return response()->json(['message' => 'Habitación no disponible.'], 422);
+            return back()->with('error', 'Habitación no disponible.');
         }
 
         $stay = Stay::create([
@@ -49,30 +71,25 @@ class CheckInOutController extends Controller
         ]);
 
         $room->update(['status' => 'ocupada']);
-
         $folio = $this->folios->createForStay($stay, (float) $reservation->estimated_total);
 
-        return response()->json([
-            'data' => [
-                'reservation' => $reservation->fresh(['huesped', 'room']),
-                'stay' => $stay->load('room'),
-                'folio' => $folio,
-            ],
-        ]);
+        return redirect()->route('folios.show', $folio)->with('success', 'Check-in registrado. Folio abierto.');
     }
 
-    public function checkOut(Reservation $reservation): JsonResponse
+    public function checkOut(Reservation $reservation): RedirectResponse
     {
         $stay = $reservation->stays()->where('status', 'activa')->latest()->first();
 
         if (! $stay) {
-            return response()->json(['message' => 'No hay estancia activa.'], 422);
+            return back()->with('error', 'No hay estancia activa.');
         }
 
         $folio = $stay->folio;
 
         if ($folio && $folio->status === 'abierto' && (float) $folio->balance > 0) {
-            return response()->json(['message' => 'El folio tiene saldo pendiente. Registre pagos antes del check-out.'], 422);
+            return redirect()
+                ->route('folios.show', $folio)
+                ->with('error', 'El folio tiene saldo pendiente. Registre pagos antes del check-out.');
         }
 
         if ($folio && $folio->status === 'abierto') {
@@ -87,8 +104,6 @@ class CheckInOutController extends Controller
         $reservation->update(['status' => 'check_out']);
         $stay->room?->update(['status' => 'sucia']);
 
-        return response()->json([
-            'data' => $reservation->fresh(['huesped', 'room', 'stays.folio']),
-        ]);
+        return back()->with('success', 'Check-out realizado. La habitación quedó sucia.');
     }
 }

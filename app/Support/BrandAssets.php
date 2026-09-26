@@ -28,6 +28,22 @@ class BrandAssets
         return asset('favicon.svg');
     }
 
+    public static function markUrl(?string $propertyCode = null): ?string
+    {
+        if (! $propertyCode) {
+            return null;
+        }
+
+        foreach (['svg', 'png'] as $ext) {
+            $relative = "images/brands/{$propertyCode}-mark.{$ext}";
+            if (File::exists(public_path($relative))) {
+                return asset($relative);
+            }
+        }
+
+        return null;
+    }
+
     public static function faviconUrl(): string
     {
         if (File::exists(public_path('favicon.svg'))) {

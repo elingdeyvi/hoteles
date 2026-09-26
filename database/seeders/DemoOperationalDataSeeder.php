@@ -26,7 +26,7 @@ class DemoOperationalDataSeeder extends Seeder
 
         $sierra = Property::query()->where('code', 'sierra-verde')->first();
         if ($sierra && $sierra->roomTypes()->exists()) {
-            $operations->seed($sierra, $admin, full: false);
+            $operations->seed($sierra, $admin, full: true);
         }
     }
 }

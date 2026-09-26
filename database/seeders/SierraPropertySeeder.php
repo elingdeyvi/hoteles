@@ -33,17 +33,19 @@ class SierraPropertySeeder extends Seeder
                 'nombre_corto' => 'Sierra Verde',
                 'nombre_largo' => 'Hotel Sierra Verde — Retiro en la montaña',
                 'rfc' => 'HTL000001XXX',
+                'descripcion' => 'Retiro de montaña con cabañas, loft familiar y restaurante. Datos de demostración.',
                 'telefono' => '555-0200',
                 'email' => 'recepcion@sierraverde.demo',
                 'direccion' => 'Carretera Montaña Km 12, Valle Alto',
+                'codigo_postal' => '61600',
+                'ciudad' => 'Valle de Bravo',
+                'estado' => 'Estado de México',
+                'pais' => 'México',
+                'sitio_web' => 'https://sierraverde.demo',
                 'color_primario' => '#1e4d3a',
                 'color_secundario' => '#64748b',
             ]
         );
-
-        if ($property->roomTypes()->exists()) {
-            return;
-        }
 
         PropertyCatalog::seedRoomTypes($property->id, [
             [
@@ -72,8 +74,7 @@ class SierraPropertySeeder extends Seeder
             ],
         ]);
 
-        if (! $property->posOutlets()->exists()) {
-            PropertyCatalog::seedPos($property->id);
-        }
+        PropertyCatalog::seedPos($property->id);
+        PropertyCatalog::seedSeasons($property->id);
     }
 }

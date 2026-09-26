@@ -11,7 +11,10 @@ use Illuminate\Validation\ValidationException;
 
 class PosSaleService
 {
-    public function __construct(private readonly FolioService $folios) {}
+    public function __construct(
+        private readonly FolioService $folios,
+        private readonly CajaService $caja,
+    ) {}
 
     /**
      * Habitaciones con estancia activa y folio abierto (cargos a cuenta).
@@ -59,7 +62,9 @@ class PosSaleService
             ]);
         }
 
-        return DB::transaction(function () use ($folio, $lines, $userId) {
+        $apertura = $this->caja->exigir('consumo');
+
+        return DB::transaction(function () use ($folio, $lines, $userId, $apertura) {
             $charges = collect();
 
             foreach ($lines as $line) {
@@ -81,6 +86,7 @@ class PosSaleService
                     'quantity' => $qty,
                     'pos_product_id' => $product->id,
                     'charged_by' => $userId,
+                    'apertura_caja_id' => $apertura->id,
                 ]);
 
                 $charges->push($charge);

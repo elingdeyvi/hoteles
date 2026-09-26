@@ -15,6 +15,7 @@ class FolioCharge extends Model
         'quantity',
         'pos_product_id',
         'charged_by',
+        'apertura_caja_id',
     ];
 
     protected $casts = [

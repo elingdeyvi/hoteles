@@ -2,28 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CorteCaja;
 use App\Models\FolioPayment;
 use App\Models\Reservation;
 use App\Services\PosReportService;
 use App\Support\CsvResponse;
 use Carbon\Carbon;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class HotelReportController extends Controller
 {
-    public function __construct(
-        private readonly PosReportService $posReports
-    ) {}
+    public function __construct(private readonly PosReportService $posReports) {}
 
-    public function occupancy(Request $request): JsonResponse
+    public function index(Request $request): Response
     {
-        $from = $request->date('from', now()->startOfMonth());
-        $to = $request->date('to', now()->endOfMonth());
+        $from = Carbon::parse($request->date('from', now()->startOfMonth()))->startOfDay();
+        $to = Carbon::parse($request->date('to', now()))->endOfDay();
+        $date = Carbon::parse($request->date('date', now()));
 
-        $reservations = Reservation::query()
+        $occupancy = Reservation::query()
             ->whereNotIn('status', ['cancelada'])
             ->where(function ($q) use ($from, $to): void {
                 $q->whereBetween('check_in', [$from, $to])
@@ -33,14 +34,6 @@ class HotelReportController extends Controller
             ->groupBy('day')
             ->orderBy('day')
             ->get();
-
-        return response()->json(['data' => $reservations]);
-    }
-
-    public function revenue(Request $request): JsonResponse
-    {
-        $from = $request->date('from', now()->startOfMonth());
-        $to = $request->date('to', now()->endOfMonth());
 
         $byDay = FolioPayment::query()
             ->whereBetween('created_at', [$from, $to])
@@ -55,21 +48,10 @@ class HotelReportController extends Controller
             ->join('rooms', 'rooms.id', '=', 'stays.room_id')
             ->join('room_types', 'room_types.id', '=', 'rooms.room_type_id')
             ->whereBetween('folio_payments.created_at', [$from, $to])
+            ->when(\App\Support\CurrentProperty::id(), fn ($q, $id) => $q->where('rooms.property_id', $id))
             ->selectRaw('room_types.name as room_type, SUM(folio_payments.amount) as total')
             ->groupBy('room_types.name')
             ->get();
-
-        return response()->json([
-            'data' => [
-                'by_day' => $byDay,
-                'by_room_type' => $byRoomType,
-            ],
-        ]);
-    }
-
-    public function arrivalsDepartures(Request $request): JsonResponse
-    {
-        $date = $request->date('date', now());
 
         $arrivals = Reservation::query()
             ->with(['huesped', 'roomType', 'room'])
@@ -83,30 +65,47 @@ class HotelReportController extends Controller
             ->whereIn('status', ['check_in', 'confirmada'])
             ->get();
 
-        return response()->json(['data' => ['arrivals' => $arrivals, 'departures' => $departures]]);
-    }
+        $pos = $this->posReports->salesReport($from, $to, $request->integer('outlet_id') ?: null);
 
-    public function posSales(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'from' => ['nullable', 'date'],
-            'to' => ['nullable', 'date', 'after_or_equal:from'],
-            'outlet_id' => ['nullable', 'integer', 'exists:pos_outlets,id'],
-        ]);
+        $cortes = CorteCaja::query()
+            ->whereHas('caja')
+            ->whereBetween('fecha_corte', [$from, $to])
+            ->orderByDesc('fecha_corte')
+            ->limit(40)
+            ->get(['id', 'tipo', 'fecha_corte', 'total_cobros', 'total_esperado', 'total_real', 'diferencia'])
+            ->map(fn (CorteCaja $corte) => [
+                'id' => $corte->id,
+                'tipo' => $corte->tipo,
+                'fecha_corte' => $corte->fecha_corte?->timezone(config('app.timezone'))->format('Y-m-d H:i'),
+                'total_cobros' => $corte->total_cobros,
+                'total_esperado' => $corte->total_esperado,
+                'total_real' => $corte->total_real,
+                'diferencia' => $corte->diferencia,
+            ]);
 
-        $from = Carbon::parse($data['from'] ?? now()->startOfMonth());
-        $to = Carbon::parse($data['to'] ?? now());
-
-        return response()->json([
-            'data' => $this->posReports->salesReport($from, $to, $data['outlet_id'] ?? null),
+        return Inertia::render('Hotel/Reports/Index', [
+            'filters' => [
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
+                'date' => $date->toDateString(),
+            ],
+            'occupancy' => $occupancy,
+            'revenue' => [
+                'by_day' => $byDay,
+                'by_room_type' => $byRoomType,
+            ],
+            'arrivals' => $arrivals,
+            'departures' => $departures,
+            'pos' => $pos,
+            'cortes' => $cortes,
         ]);
     }
 
     public function exportPosSales(Request $request): StreamedResponse
     {
-        [$from, $to, $outletId] = $this->parsePosReportParams($request);
-
-        $lines = $this->posReports->salesDetailLines($from, $to, $outletId);
+        $from = Carbon::parse($request->date('from', now()->startOfMonth()))->startOfDay();
+        $to = Carbon::parse($request->date('to', now()))->endOfDay();
+        $lines = $this->posReports->salesDetailLines($from, $to, $request->integer('outlet_id') ?: null);
         $rows = $lines->map(fn ($line) => [
             Carbon::parse($line->created_at)->format('Y-m-d H:i'),
             $line->folio_number,
@@ -120,19 +119,8 @@ class HotelReportController extends Controller
             $line->charged_by_name ?? '',
         ]);
 
-        $filename = 'pos-ventas_'.$from->format('Ymd').'_'.$to->format('Ymd').'.csv';
-
-        return CsvResponse::download($filename, [
-            'Fecha',
-            'Folio',
-            'Habitación',
-            'Huésped',
-            'Outlet',
-            'Producto',
-            'Cantidad',
-            'Precio unit.',
-            'Total línea',
-            'Registrado por',
+        return CsvResponse::download('pos-ventas_'.$from->format('Ymd').'_'.$to->format('Ymd').'.csv', [
+            'Fecha', 'Folio', 'Habitación', 'Huésped', 'Outlet', 'Producto', 'Cantidad', 'Precio unit.', 'Total línea', 'Registrado por',
         ], $rows);
     }
 
@@ -148,43 +136,11 @@ class HotelReportController extends Controller
             ->orderBy('day')
             ->get();
 
-        $byRoomType = DB::table('folio_payments')
-            ->join('folios', 'folios.id', '=', 'folio_payments.folio_id')
-            ->join('stays', 'stays.id', '=', 'folios.stay_id')
-            ->join('rooms', 'rooms.id', '=', 'stays.room_id')
-            ->join('room_types', 'room_types.id', '=', 'rooms.room_type_id')
-            ->whereBetween('folio_payments.created_at', [$from, $to])
-            ->selectRaw('room_types.name as room_type, SUM(folio_payments.amount) as total')
-            ->groupBy('room_types.name')
-            ->get();
-
         $rows = collect();
         foreach ($byDay as $row) {
             $rows->push(['Ingresos por día', $row->day, number_format((float) $row->total, 2, '.', '')]);
         }
-        foreach ($byRoomType as $row) {
-            $rows->push(['Ingresos por tipo habitación', $row->room_type, number_format((float) $row->total, 2, '.', '')]);
-        }
 
-        $filename = 'ingresos_'.$from->format('Ymd').'_'.$to->format('Ymd').'.csv';
-
-        return CsvResponse::download($filename, ['Sección', 'Concepto', 'Total'], $rows);
-    }
-
-    /**
-     * @return array{0: Carbon, 1: Carbon, 2: ?int}
-     */
-    private function parsePosReportParams(Request $request): array
-    {
-        $data = $request->validate([
-            'from' => ['nullable', 'date'],
-            'to' => ['nullable', 'date', 'after_or_equal:from'],
-            'outlet_id' => ['nullable', 'integer', 'exists:pos_outlets,id'],
-        ]);
-
-        $from = Carbon::parse($data['from'] ?? now()->startOfMonth())->startOfDay();
-        $to = Carbon::parse($data['to'] ?? now())->endOfDay();
-
-        return [$from, $to, $data['outlet_id'] ?? null];
+        return CsvResponse::download('ingresos_'.$from->format('Ymd').'_'.$to->format('Ymd').'.csv', ['Sección', 'Concepto', 'Total'], $rows);
     }
 }

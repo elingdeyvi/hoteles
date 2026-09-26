@@ -43,6 +43,8 @@ class HotelSeeder extends Seeder
             ],
         ]);
 
+        PropertyCatalog::seedSeasons($propertyId);
+
         Huesped::firstOrCreate(
             ['email' => 'huesped@demo.com'],
             [

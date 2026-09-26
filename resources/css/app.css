@@ -1,0 +1,775 @@
+@import 'bootstrap/dist/css/bootstrap.min.css';
+@import 'admin-lte/dist/css/adminlte.min.css';
+@import '@fortawesome/fontawesome-free/css/all.min.css';
+
+/* ---------------------------------------------------------------------------
+   Tema POS: variables que controlan menú, barra y acentos
+--------------------------------------------------------------------------- */
+:root {
+    /* Interfaz clara: si Windows está en oscuro, Chrome pinta el icono del
+       calendario y las flechas del select en blanco sobre campos blancos. */
+    color-scheme: light;
+    --pos-primary: #0070c0;
+    --pos-primary-dark: #005a9a;
+    --pos-primary-soft: #e8f3fb;
+    --pos-secondary: #1e293b;
+    --pos-sidebar-bg: #1e293b;
+    --pos-sidebar-hover: #334155;
+    --pos-navbar-bg: #ffffff;
+    --pos-navbar-border: #e2e8f0;
+}
+
+/* Botones primarios */
+.btn-primary {
+    background-color: var(--pos-primary);
+    border-color: var(--pos-primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active,
+.btn-primary.active {
+    background-color: var(--pos-primary-dark);
+    border-color: var(--pos-primary-dark);
+}
+
+.btn-outline-primary {
+    color: var(--pos-primary);
+    border-color: var(--pos-primary);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--pos-primary);
+    border-color: var(--pos-primary);
+    color: #fff;
+}
+
+.text-primary {
+    color: var(--pos-primary) !important;
+}
+
+.text-bg-primary,
+.badge.text-bg-primary {
+    background-color: var(--pos-primary) !important;
+}
+
+/* Barra superior */
+.app-header {
+    background-color: var(--pos-navbar-bg) !important;
+    border-bottom-color: var(--pos-navbar-border) !important;
+}
+
+.app-header .nav-link {
+    color: var(--pos-secondary) !important;
+}
+
+.app-header .nav-link:hover {
+    color: var(--pos-primary) !important;
+}
+
+/* Menú lateral */
+.app-sidebar {
+    background-color: var(--pos-sidebar-bg) !important;
+}
+
+.app-sidebar .sidebar-brand {
+    justify-content: flex-start;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.app-sidebar .brand-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.app-sidebar .brand-image {
+    float: none;
+    flex: 0 0 32px;
+    width: 32px !important;
+    height: 32px !important;
+    max-width: 32px;
+    max-height: 32px;
+    object-fit: contain;
+    background: #fff;
+    padding: 2px;
+}
+
+.app-sidebar .brand-link,
+.app-sidebar .brand-text {
+    color: #fff !important;
+}
+
+.app-sidebar .brand-text {
+    min-width: 0;
+    margin-left: 0;
+    overflow: hidden;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-sidebar .nav-header {
+    color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.app-sidebar .sidebar-menu .nav-link {
+    color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.app-sidebar .sidebar-menu .nav-link:hover {
+    background-color: var(--pos-sidebar-hover) !important;
+    color: #fff !important;
+}
+
+.app-sidebar .sidebar-menu .nav-link.active {
+    background-color: var(--pos-primary) !important;
+    color: #fff !important;
+    font-weight: 600;
+}
+
+.app-sidebar .sidebar-menu .nav-treeview .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: inset 3px 0 0 var(--pos-primary);
+}
+
+.app-sidebar .sidebar-menu .nav-link .nav-icon {
+    color: inherit !important;
+}
+
+.app-footer a {
+    color: var(--pos-primary);
+}
+
+/* Treeview: asegurar visibilidad cuando Vue lo muestra */
+.sidebar-menu .nav-item.menu-open > .nav-treeview {
+    display: block !important;
+}
+
+.sidebar-menu .nav-item.menu-open > .nav-link .nav-arrow {
+    transform: translateY(-50%) rotate(90deg);
+}
+
+.app-sidebar .sidebar-wrapper {
+    overflow-y: auto;
+}
+
+/* Modales POS por encima del sidebar AdminLTE */
+.pos-modal {
+    z-index: 2000;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.pos-modal-backdrop {
+    z-index: 1990;
+}
+
+.pos-modal.pos-modal-stack {
+    z-index: 2100;
+}
+
+.pos-modal-backdrop.pos-modal-stack {
+    z-index: 2090;
+}
+
+/* Modales largos: cuerpo con scroll, header/footer fijos */
+.pos-modal .modal-dialog-scrollable {
+    max-height: calc(100vh - 2rem);
+    margin: 1rem auto;
+}
+
+.pos-modal .modal-dialog-scrollable .modal-content {
+    max-height: calc(100vh - 2rem);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.pos-modal .modal-dialog-scrollable .modal-header,
+.pos-modal .modal-dialog-scrollable .modal-footer {
+    flex-shrink: 0;
+}
+
+.pos-modal .modal-dialog-scrollable .modal-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1 1 auto;
+    max-height: none;
+}
+
+/* Modales inline (sin FormModal) también con scroll usable */
+.modal.show .modal-dialog-scrollable {
+    max-height: calc(100vh - 2rem);
+}
+
+.modal.show .modal-dialog-scrollable .modal-content {
+    max-height: calc(100vh - 2rem);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal.show .modal-dialog-scrollable form.modal-content,
+.modal.show .modal-dialog-scrollable .modal-content > form {
+    display: flex;
+    flex-direction: column;
+    max-height: inherit;
+    overflow: hidden;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.modal.show .modal-dialog-scrollable .modal-header,
+.modal.show .modal-dialog-scrollable .modal-footer {
+    flex-shrink: 0;
+}
+
+.modal.show .modal-dialog-scrollable .modal-body {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* Paletas en configuración */
+.palette-card {
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    background: #fff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.palette-card:hover {
+    border-color: var(--pos-primary-soft);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.palette-card.active {
+    border-color: var(--pos-primary);
+    box-shadow: 0 0 0 0.15rem var(--pos-primary-soft);
+}
+
+.palette-swatches {
+    display: flex;
+    height: 2rem;
+    border-radius: 0.4rem;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.palette-swatches span {
+    flex: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Mapa de mesas (modo restaurante)
+--------------------------------------------------------------------------- */
+.mesa-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    min-height: 130px;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    border: 2px solid transparent;
+    color: #0f172a;
+    background: #e2e8f0;
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.mesa-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.mesa-card.disabled {
+    opacity: 0.6;
+    cursor: progress;
+}
+
+.mesa-card__num {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.mesa-card__name {
+    font-weight: 600;
+    text-align: center;
+}
+
+.mesa-card__meta {
+    font-size: 0.8rem;
+    opacity: 0.85;
+}
+
+.mesa-card__estado {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.mesa-card__total {
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+.mesa-card.libre {
+    background: #d1fae5;
+    border-color: #10b981;
+    color: #065f46;
+}
+
+.mesa-card.ocupada {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #7f1d1d;
+}
+
+.mesa-card.cuenta_pedida {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #78350f;
+}
+
+/* Utilidades ligeras para formularios Breeze que aún usan clases utilitarias */
+.block { display: block; }
+.w-full { width: 100%; }
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-4 { margin-top: 1rem; }
+.mb-4 { margin-bottom: 1rem; }
+.ms-2 { margin-left: 0.5rem; }
+.ms-4 { margin-left: 1rem; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.justify-end { justify-content: flex-end; }
+.text-sm { font-size: 0.875rem; }
+.text-gray-600 { color: #6c757d; }
+.text-green-600 { color: #198754; }
+.font-medium { font-weight: 500; }
+.underline { text-decoration: underline; }
+
+/* Ajustes plantilla */
+body {
+    font-family: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.app-brand-text {
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.small-box .icon > i {
+    font-size: 70px;
+}
+
+.sidebar-menu .nav-link.active {
+    font-weight: 600;
+}
+
+.login-page,
+.register-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    position: relative;
+    padding: 1.5rem;
+    overflow: hidden;
+    background: #f3f5f8;
+}
+
+.login-backdrop {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.72) 38%, rgba(255, 255, 255, 0.12) 68%, rgba(255, 255, 255, 0) 100%),
+        url('/images/fondo_login.png') right center / cover no-repeat;
+}
+
+.login-shell {
+    position: relative;
+    z-index: 1;
+    width: min(920px, 100%);
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 1.25rem;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(8px);
+}
+
+.login-shell--branded {
+    width: min(420px, 100%);
+    display: block;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    margin-left: clamp(0.5rem, 6vw, 4rem);
+}
+
+.login-panel {
+    min-height: 520px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem;
+}
+
+.login-shell--branded .login-panel {
+    min-height: auto;
+    padding: 0;
+    justify-content: flex-start;
+}
+
+.login-panel--brand {
+    background:
+        radial-gradient(circle at top left, rgba(45, 212, 191, 0.18), transparent 45%),
+        linear-gradient(160deg, rgba(15, 23, 42, 0.55), rgba(15, 118, 110, 0.35));
+    color: #f8fafc;
+    text-align: center;
+}
+
+.login-brand-inner {
+    max-width: 280px;
+}
+
+.login-logo {
+    display: block;
+    margin: 0 auto;
+    object-fit: contain;
+}
+
+.login-logo--hero {
+    width: min(280px, 100%);
+    height: auto;
+    max-height: 110px;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+}
+
+.login-logo--compact {
+    width: 160px;
+    height: auto;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+}
+
+.login-title {
+    margin: 1.25rem 0 0.5rem;
+    font-size: 1.85rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.login-subtitle {
+    margin: 0;
+    color: rgba(248, 250, 252, 0.78);
+    line-height: 1.5;
+}
+
+.login-panel--form {
+    background: transparent;
+}
+
+.login-shell--branded .login-form-card {
+    width: 100%;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 1rem;
+    padding: 1.75rem 1.5rem 1.5rem;
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+}
+
+.login-form-card {
+    width: 100%;
+    max-width: 360px;
+}
+
+.login-form-header {
+    margin-bottom: 1.5rem;
+}
+
+.login-form-header h2 {
+    margin: 0;
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: #333333;
+}
+
+.login-form-header p {
+    margin: 0.35rem 0 0;
+    color: #64748b;
+}
+
+.login-input .input-group-text {
+    background: #fff;
+    border-color: #cbd5e1;
+    color: #64748b;
+}
+
+.login-input .form-control {
+    border-color: #cbd5e1;
+    background: #fff;
+    color: #111111;
+    caret-color: #111111;
+}
+
+.login-input .form-control::placeholder {
+    color: #94a3b8;
+    opacity: 1;
+}
+
+.login-input .form-control:focus {
+    border-color: #0070c0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 112, 192, 0.18);
+    color: #111111;
+    background: #fff;
+}
+
+.login-input .form-control:-webkit-autofill,
+.login-input .form-control:-webkit-autofill:hover,
+.login-input .form-control:-webkit-autofill:focus {
+    -webkit-text-fill-color: #111111;
+    caret-color: #111111;
+    transition: background-color 99999s ease-in-out 0s;
+}
+
+.login-toggle-password {
+    cursor: pointer;
+    user-select: none;
+}
+
+.login-forgot {
+    color: #0070c0;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.login-forgot:hover {
+    color: #005a9a;
+    text-decoration: underline;
+}
+
+.btn-login {
+    background: linear-gradient(135deg, #0070c0, #0088e0);
+    border: 0;
+    color: #fff;
+    font-weight: 600;
+    padding: 0.8rem 1rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 24px rgba(0, 112, 192, 0.28);
+}
+
+.btn-login:hover,
+.btn-login:focus {
+    background: linear-gradient(135deg, #005a9a, #0070c0);
+    color: #fff;
+}
+
+.btn-login:disabled {
+    opacity: 0.75;
+}
+
+@media (max-width: 767.98px) {
+    .login-page,
+    .register-page {
+        justify-content: center;
+    }
+
+    .login-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .login-shell--branded {
+        margin-left: 0;
+        width: min(420px, 100%);
+    }
+
+    .login-backdrop {
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.82) 55%, rgba(255, 255, 255, 0.55) 100%),
+            url('/images/fondo_login.png') right center / cover no-repeat;
+    }
+
+    .login-panel--brand {
+        display: none;
+    }
+
+    .login-panel {
+        min-height: auto;
+        padding: 1.75rem 1.25rem;
+    }
+}
+
+.login-box,
+.register-box {
+    width: 400px;
+    max-width: 94vw;
+}
+
+.auth-brand {
+    color: #fff;
+    text-align: center;
+    margin-bottom: 1.25rem;
+}
+
+.auth-brand h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.auth-brand p {
+    opacity: 0.85;
+    margin: 0.35rem 0 0;
+}
+
+.table-actions .btn {
+    padding: 0.15rem 0.45rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Modo pantalla táctil — SOLO con clase raíz .pos-touch (flag empresa)
+   Sin la clase, la UI queda idéntica al comportamiento actual.
+--------------------------------------------------------------------------- */
+.pos-touch {
+    --pos-touch-min: 48px;
+}
+
+.pos-touch .btn {
+    min-height: var(--pos-touch-min);
+    padding: 0.65rem 1rem;
+    font-size: 1rem;
+}
+
+.pos-touch .btn-sm {
+    min-height: var(--pos-touch-min);
+    padding: 0.55rem 0.9rem;
+    font-size: 0.95rem;
+}
+
+.pos-touch .btn-lg {
+    min-height: 56px;
+    padding: 0.85rem 1.25rem;
+    font-size: 1.1rem;
+}
+
+.pos-touch .form-control,
+.pos-touch .form-select,
+.pos-touch .form-control-sm,
+.pos-touch .form-select-sm {
+    min-height: var(--pos-touch-min);
+    padding: 0.55rem 0.85rem;
+    font-size: 1rem;
+}
+
+.pos-touch .form-check-input {
+    width: 1.35em;
+    height: 1.35em;
+    margin-top: 0.15em;
+}
+
+.pos-touch .form-switch .form-check-input {
+    width: 2.5em;
+    height: 1.35em;
+}
+
+.pos-touch .app-sidebar .nav-link {
+    min-height: var(--pos-touch-min);
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.pos-touch .app-header .nav-link,
+.pos-touch .navbar-nav .nav-link {
+    min-height: var(--pos-touch-min);
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 0.85rem;
+}
+
+.pos-touch .btn-group-sm > .btn,
+.pos-touch .table-actions .btn {
+    min-height: var(--pos-touch-min);
+    min-width: var(--pos-touch-min);
+    padding: 0.45rem 0.65rem;
+}
+
+.pos-touch .modal-footer .btn {
+    min-height: var(--pos-touch-min);
+}
+
+/* Catálogo / chips / productos POS */
+.pos-touch .pos-touch-chip,
+.pos-touch .catalogo-pos .btn-sm {
+    min-height: var(--pos-touch-min);
+    padding: 0.55rem 0.9rem;
+}
+
+.pos-touch .pos-touch-product,
+.pos-touch .catalogo-pos .btn.w-100.h-100 {
+    min-height: 88px;
+    padding: 0.85rem 0.65rem;
+    font-size: 1rem;
+}
+
+/* Qty steppers */
+.pos-touch .pos-touch-qty .btn {
+    min-width: var(--pos-touch-min);
+    min-height: var(--pos-touch-min);
+}
+
+/* Métodos de pago táctiles */
+.pos-touch .pos-touch-pay-method {
+    min-height: 56px;
+    font-size: 1rem;
+}
+
+/* Numpad */
+.pos-touch .touch-numpad-key {
+    min-height: 56px;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.pos-touch .btn-login {
+    min-height: 52px;
+}
+
+.pos-touch .input-group-lg > .form-control,
+.pos-touch .input-group-lg > .btn {
+    min-height: 52px;
+}
+
+.pos-touch .mesa-card {
+    min-height: 160px;
+    padding: 1rem;
+}
+
+.pos-touch .mesa-grid {
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+}

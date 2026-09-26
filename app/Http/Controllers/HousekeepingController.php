@@ -3,25 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Room;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class HousekeepingController extends Controller
 {
-    public function board(): JsonResponse
+    public function board(): Response
     {
         $rooms = Room::query()
             ->with('roomType')
             ->where('is_active', true)
             ->orderBy('floor')
             ->orderBy('number')
-            ->get()
-            ->groupBy('status');
+            ->get();
 
-        return response()->json(['data' => $rooms]);
+        return Inertia::render('Hotel/Housekeeping/Index', [
+            'rooms' => $rooms,
+        ]);
     }
 
-    public function updateStatus(Request $request, Room $room): JsonResponse
+    public function updateStatus(Request $request, Room $room): RedirectResponse
     {
         $data = $request->validate([
             'status' => ['required', 'string', 'in:disponible,limpia,sucia,mantenimiento,ocupada'],
@@ -30,12 +33,12 @@ class HousekeepingController extends Controller
         if ($room->status === 'ocupada' && $data['status'] !== 'ocupada') {
             $hasActiveStay = $room->stays()->where('status', 'activa')->exists();
             if ($hasActiveStay) {
-                return response()->json(['message' => 'La habitación tiene huésped activo.'], 422);
+                return back()->with('error', 'La habitación tiene huésped activo.');
             }
         }
 
         $room->update(['status' => $data['status']]);
 
-        return response()->json(['data' => $room->fresh('roomType')]);
+        return back()->with('success', 'Estado de habitación actualizado.');
     }
 }

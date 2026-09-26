@@ -1,0 +1,17 @@
+---
+description: Arquitectura del sistema hotelero (Laravel 12 + Inertia + Vue 3 + AdminLTE)
+globs:
+alwaysApply: true
+---
+
+# Hotel v2
+
+Misma base que POSNegocio-v2: Laravel 12, Inertia 2, Vue 3, AdminLTE 4, Bootstrap 5, Vite, Spatie Permission, sesión Breeze.
+
+- Pantallas en `resources/js/Pages`, layout `AuthenticatedLayout.vue`.
+- Controladores devuelven `Inertia::render` y redirects con `success` / `error`.
+- Lógica de reservas, precios, folios, POS y booking vive en `app/Services`.
+- Hotel activo: sesión `current_property_id` + middleware `property.context`.
+- Roles: Administrador, Recepcionista, Housekeeping, Cajero. Permisos `modulo.recurso`.
+- Zona horaria `America/Mexico_City`, idioma `es`, montos `es-MX`.
+- UI nueva con AdminLTE/Bootstrap, no Tailwind (salvo pantallas Breeze de auth/perfil).

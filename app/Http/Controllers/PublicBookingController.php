@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\ConfiguracionEmpresa;
-use App\Support\BrandAssets;
+use App\Models\Property;
 use App\Services\BookingPaymentService;
 use App\Services\OnlineBookingService;
+use App\Support\BrandAssets;
+use App\Support\CurrentProperty;
 use Carbon\Carbon;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class PublicBookingController extends Controller
 {
@@ -17,68 +21,69 @@ class PublicBookingController extends Controller
         private readonly BookingPaymentService $payments
     ) {}
 
-    public function config(): JsonResponse
+    public function show(Request $request, Property $property): Response
     {
-        if (! config('hotel.booking.enabled', true)) {
-            return response()->json(['message' => 'Las reservas en línea no están disponibles.'], 503);
+        $this->ensureEnabled($property);
+
+        $empresa = ConfiguracionEmpresa::obtenerConfiguracion($property->id);
+        $availability = null;
+
+        if ($request->filled('check_in') && $request->filled('check_out')) {
+            $checkIn = Carbon::parse($request->get('check_in'));
+            $checkOut = Carbon::parse($request->get('check_out'));
+            if ($checkOut->gt($checkIn)) {
+                $availability = $this->booking->availability($checkIn, $checkOut, $request->integer('room_type_id') ?: null);
+            }
         }
 
-        $empresa = ConfiguracionEmpresa::obtenerConfiguracion();
+        $lookup = null;
+        if ($request->filled('folio') && $request->filled('email')) {
+            $found = $this->booking->lookup($request->string('folio'), $request->string('email'));
+            $lookup = $found ? [
+                'folio' => $found->folio,
+                'status' => $found->status,
+                'check_in' => $found->check_in?->format('Y-m-d'),
+                'check_out' => $found->check_out?->format('Y-m-d'),
+                'estimated_total' => $found->estimated_total,
+                'payment_status' => $found->payment_status,
+                'deposit_amount' => $found->deposit_amount,
+                'room_type' => $found->roomType?->name,
+                'guest_name' => $found->huesped?->nombre,
+                'telefono' => $found->huesped?->telefono,
+                'guests_count' => $found->guests_count,
+                'room' => ['number' => $found->room?->number],
+            ] : ['missing' => true];
+        }
 
-        return response()->json([
-            'data' => [
-                'hotel' => [
-                    'nombre' => $empresa?->nombre_empresa ?? 'Hotel',
-                    'telefono' => $empresa?->telefono,
-                    'email' => $empresa?->email,
-                    'direccion' => $empresa?->direccion,
-                    'logo_url' => $empresa?->logo_url ?? BrandAssets::logoUrl($empresa?->property?->code),
-                    'color_primario' => $empresa?->color_primario ?? BrandAssets::primaryColor($empresa?->property?->code),
-                    'color_secundario' => $empresa?->color_secundario ?? '#64748b',
-                ],
-                'booking' => [
-                    'min_advance_days' => (int) config('hotel.booking.min_advance_days', 0),
-                    'max_guests' => (int) config('hotel.booking.max_guests', 8),
-                    'confirmation_note' => config('hotel.booking.confirmation_note'),
-                    'payments' => [
-                        'enabled' => $this->payments->paymentsEnabled(),
-                        'deposit_percent' => (int) config('hotel.booking.payments.deposit_percent', 30),
-                        'currency' => config('hotel.booking.payments.currency', 'mxn'),
-                        'provider' => config('hotel.booking.payments.provider', 'demo'),
-                    ],
+        return Inertia::render('Booking/Index', [
+            'property' => $property->only(['id', 'code', 'name', 'phone', 'email', 'address']),
+            'hotel' => [
+                'nombre' => $empresa?->nombre_empresa ?? $property->name,
+                'telefono' => $empresa?->telefono ?? $property->phone,
+                'email' => $empresa?->email ?? $property->email,
+                'direccion' => $empresa?->direccion ?? $property->address,
+                'logo_url' => $empresa?->logo_url ?? BrandAssets::logoUrl($property->code),
+                'color_primario' => $empresa?->color_primario ?? BrandAssets::primaryColor($property->code),
+            ],
+            'roomTypes' => $this->booking->activeRoomTypes(),
+            'availability' => $availability,
+            'lookup' => $lookup,
+            'filters' => $request->only(['check_in', 'check_out', 'room_type_id', 'folio', 'email']),
+            'booking' => [
+                'max_guests' => (int) config('hotel.booking.max_guests', 8),
+                'confirmation_note' => config('hotel.booking.confirmation_note'),
+                'payments' => [
+                    'enabled' => $this->payments->paymentsEnabled(),
+                    'deposit_percent' => (int) config('hotel.booking.payments.deposit_percent', 30),
+                    'provider' => config('hotel.booking.payments.provider', 'demo'),
                 ],
             ],
         ]);
     }
 
-    public function roomTypes(): JsonResponse
+    public function store(Request $request, Property $property): RedirectResponse
     {
-        $this->ensureEnabled();
-
-        return response()->json(['data' => $this->booking->activeRoomTypes()]);
-    }
-
-    public function availability(Request $request): JsonResponse
-    {
-        $this->ensureEnabled();
-
-        $data = $request->validate([
-            'check_in' => ['required', 'date', 'after_or_equal:today'],
-            'check_out' => ['required', 'date', 'after:check_in'],
-            'room_type_id' => ['nullable', 'integer', 'exists:room_types,id'],
-        ]);
-
-        $checkIn = Carbon::parse($data['check_in']);
-        $checkOut = Carbon::parse($data['check_out']);
-
-        return response()->json([
-            'data' => $this->booking->availability($checkIn, $checkOut, $data['room_type_id'] ?? null),
-        ]);
-    }
-
-    public function store(Request $request): JsonResponse
-    {
-        $this->ensureEnabled();
+        $this->ensureEnabled($property);
 
         $data = $request->validate([
             'room_type_id' => ['required', 'exists:room_types,id'],
@@ -86,35 +91,49 @@ class PublicBookingController extends Controller
             'check_out' => ['required', 'date', 'after:check_in'],
             'guests_count' => ['nullable', 'integer', 'min:1', 'max:'.(int) config('hotel.booking.max_guests', 8)],
             'notes' => ['nullable', 'string', 'max:500'],
-            'guest.nombre' => ['required', 'string', 'max:120'],
-            'guest.email' => ['required', 'email', 'max:120'],
-            'guest.telefono' => ['nullable', 'string', 'max:40'],
-            'guest.documento' => ['nullable', 'string', 'max:60'],
+            'guest_nombre' => ['required', 'string', 'max:120'],
+            'guest_email' => ['required', 'email', 'max:120'],
+            'guest_telefono' => ['nullable', 'string', 'max:40'],
+            'guest_documento' => ['nullable', 'string', 'max:60'],
         ]);
 
-        $reservation = $this->booking->createBooking($data);
+        $reservation = $this->booking->createBooking([
+            'room_type_id' => $data['room_type_id'],
+            'check_in' => $data['check_in'],
+            'check_out' => $data['check_out'],
+            'guests_count' => $data['guests_count'] ?? 1,
+            'notes' => $data['notes'] ?? null,
+            'guest' => [
+                'nombre' => $data['guest_nombre'],
+                'email' => $data['guest_email'],
+                'telefono' => $data['guest_telefono'] ?? null,
+                'documento' => $data['guest_documento'] ?? null,
+            ],
+        ]);
 
-        $payload = [
-            'data' => $reservation->load(['huesped', 'roomType']),
-            'message' => config('hotel.booking.confirmation_note'),
-        ];
-
+        $message = config('hotel.booking.confirmation_note');
         if ($this->payments->paymentsEnabled() && $reservation->payment_status === 'pending') {
-            $payload['payment'] = [
-                'required' => true,
-                'amount' => (float) $reservation->deposit_amount,
-                'currency' => config('hotel.booking.payments.currency', 'mxn'),
-                'status' => $reservation->payment_status,
-            ];
-            $payload['message'] = 'Reserva registrada. Complete el anticipo en línea para confirmar su estadía.';
+            $message = 'Reserva registrada. Complete el anticipo para confirmar su estadía. Folio '.$reservation->folio;
+        } else {
+            $message .= ' Folio '.$reservation->folio;
         }
 
-        return response()->json($payload, 201);
+        return redirect()
+            ->route('booking.show', ['property' => $property->code, 'folio' => $reservation->folio, 'email' => $data['guest_email']])
+            ->with('success', $message);
     }
 
-    public function lookup(Request $request): JsonResponse
+    public function demoPay(Request $request, Property $property): RedirectResponse
     {
-        $this->ensureEnabled();
+        $this->ensureEnabled($property);
+
+        if (! $this->payments->paymentsEnabled() || config('hotel.booking.payments.provider') !== 'demo') {
+            abort(404);
+        }
+
+        if (app()->environment('production')) {
+            abort(403, 'Confirmación demo no disponible en producción.');
+        }
 
         $data = $request->validate([
             'folio' => ['required', 'string', 'max:30'],
@@ -122,37 +141,27 @@ class PublicBookingController extends Controller
         ]);
 
         $reservation = $this->booking->lookup($data['folio'], $data['email']);
-
         if (! $reservation) {
-            return response()->json(['message' => 'No se encontró una reserva con esos datos.'], 404);
+            return back()->with('error', 'Reserva no encontrada.');
         }
 
-        return response()->json([
-            'data' => [
-                'folio' => $reservation->folio,
-                'online_reference' => $reservation->online_reference,
-                'status' => $reservation->status,
-                'check_in' => $reservation->check_in?->format('Y-m-d'),
-                'check_out' => $reservation->check_out?->format('Y-m-d'),
-                'estimated_total' => $reservation->estimated_total,
-                'payment_status' => $reservation->payment_status,
-                'deposit_amount' => $reservation->deposit_amount,
-                'paid_at' => $reservation->paid_at?->format('Y-m-d H:i'),
-                'room_type' => $reservation->roomType?->only(['id', 'name']),
-                'guest_name' => $reservation->huesped?->nombre,
-            ],
-        ]);
+        if ($reservation->payment_status !== 'pending') {
+            return back()->with('error', 'La reserva no tiene un anticipo pendiente.');
+        }
+
+        $this->payments->markPaid($reservation, 'DEMO-'.now()->format('YmdHis'));
+
+        return back()->with('success', 'Anticipo registrado. Su reserva quedó confirmada.');
     }
 
-    private function ensureEnabled(): void
+    private function ensureEnabled(Property $property): void
     {
-        if (! config('hotel.booking.enabled', true)) {
+        if (! config('hotel.booking.enabled', true) || ! $property->booking_enabled) {
             abort(503, 'Las reservas en línea no están disponibles.');
         }
 
-        $property = \App\Support\CurrentProperty::get();
-        if ($property && ! $property->booking_enabled) {
-            abort(503, 'Las reservas en línea no están disponibles para este hotel.');
+        if (! CurrentProperty::id()) {
+            CurrentProperty::set($property);
         }
     }
 }

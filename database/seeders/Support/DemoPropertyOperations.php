@@ -54,63 +54,59 @@ class DemoPropertyOperations
         $this->posProducts = [];
         $this->roomsInUse = [];
 
-        if ($this->alreadySeeded()) {
-            return;
-        }
+        $this->clearPreviousDemo();
 
         CurrentProperty::set($property);
 
-        $this->loadGuests($full);
+        $this->loadGuests();
         $this->loadPosProducts();
 
         if ($this->posProducts === []) {
+            CurrentProperty::clear();
+
             return;
         }
 
+        Room::withoutGlobalScopes()
+            ->where('property_id', $property->id)
+            ->update(['status' => 'disponible']);
+
         $this->seedHistoricalStays($full);
-        $this->seedTodayOperations($full);
-        $this->seedPendingWebReservations($full ? 4 : 2);
-        $this->seedFutureReservations($full ? 3 : 1);
-        $this->seedCancelledReservation();
+        $this->seedLiveOperation($full);
         $this->applyHousekeepingStatuses($full);
 
         CurrentProperty::clear();
     }
 
-    private function alreadySeeded(): bool
+    private function clearPreviousDemo(): void
     {
-        return Reservation::withoutGlobalScopes()
+        Reservation::withoutGlobalScopes()
             ->where('property_id', $this->property->id)
             ->where('notes', self::DEMO_NOTE)
-            ->exists();
+            ->delete();
     }
 
-    private function loadGuests(bool $full): void
+    private function loadGuests(): void
     {
         $definitions = [
-            ['nombre' => 'María González', 'email' => 'maria.gonzalez@demo.hotel', 'documento' => 'DEM-101'],
-            ['nombre' => 'Carlos Ruiz', 'email' => 'carlos.ruiz@demo.hotel', 'documento' => 'DEM-102'],
-            ['nombre' => 'Ana Martínez', 'email' => 'ana.martinez@demo.hotel', 'documento' => 'DEM-103'],
-            ['nombre' => 'Luis Herrera', 'email' => 'luis.herrera@demo.hotel', 'documento' => 'DEM-104'],
-            ['nombre' => 'Patricia Vega', 'email' => 'patricia.vega@demo.hotel', 'documento' => 'DEM-105'],
-            ['nombre' => 'Roberto Sánchez', 'email' => 'roberto.sanchez@demo.hotel', 'documento' => 'DEM-106'],
-            ['nombre' => 'Elena Torres', 'email' => 'elena.torres@demo.hotel', 'documento' => 'DEM-107'],
-            ['nombre' => 'Jorge Mendoza', 'email' => 'jorge.mendoza@demo.hotel', 'documento' => 'DEM-108'],
+            ['nombre' => 'María González', 'email' => 'maria.gonzalez@demo.hotel', 'telefono' => '5551110101', 'documento' => 'INE-101', 'nacionalidad' => 'MX', 'direccion' => 'Av. Reforma 120, Cuauhtémoc, CDMX', 'notas' => 'Pide piso alto y almohada extra.'],
+            ['nombre' => 'Carlos Ruiz', 'email' => 'carlos.ruiz@demo.hotel', 'telefono' => '5551110102', 'documento' => 'INE-102', 'nacionalidad' => 'MX', 'direccion' => 'Calle 60 45, Centro, Mérida', 'notas' => 'Llega tarde; dejó el vuelo en notas.'],
+            ['nombre' => 'Ana Martínez', 'email' => 'ana.martinez@demo.hotel', 'telefono' => '5551110103', 'documento' => 'PAS-103', 'nacionalidad' => 'MX', 'direccion' => 'Av. Vallarta 800, Guadalajara', 'notas' => 'Sale hoy. Revisar saldo del folio.'],
+            ['nombre' => 'Luis Herrera', 'email' => 'luis.herrera@demo.hotel', 'telefono' => '5551110104', 'documento' => 'INE-104', 'nacionalidad' => 'MX', 'direccion' => 'Blvd. Kukulcán km 9, Cancún', 'notas' => 'Huésped frecuente. Cargo de bar autorizado.'],
+            ['nombre' => 'Patricia Vega', 'email' => 'patricia.vega@demo.hotel', 'telefono' => '5551110105', 'documento' => 'INE-105', 'nacionalidad' => 'MX', 'direccion' => 'Av. Universidad 300, Monterrey', 'notas' => 'Llega hoy. Habitación ya asignada.'],
+            ['nombre' => 'Roberto Sánchez', 'email' => 'roberto.sanchez@demo.hotel', 'telefono' => '5551110106', 'documento' => 'INE-106', 'nacionalidad' => 'MX', 'direccion' => 'Calle Independencia 15, Oaxaca', 'notas' => 'Llega hoy sin habitación asignada.'],
+            ['nombre' => 'Elena Torres', 'email' => 'elena.torres@demo.hotel', 'telefono' => '5551110107', 'documento' => 'INE-107', 'nacionalidad' => 'MX', 'direccion' => 'Paseo de Montejo 200, Mérida', 'notas' => 'Reserva web. Anticipo pendiente.'],
+            ['nombre' => 'Jorge Mendoza', 'email' => 'jorge.mendoza@demo.hotel', 'telefono' => '5551110108', 'documento' => 'INE-108', 'nacionalidad' => 'MX', 'direccion' => 'Av. Juárez 50, Puebla', 'notas' => 'Reserva web con anticipo pagado.'],
+            ['nombre' => 'Sofía Navarro', 'email' => 'sofia.navarro@demo.hotel', 'telefono' => '5551110109', 'documento' => 'INE-109', 'nacionalidad' => 'MX', 'direccion' => 'Calle 5 de Mayo 8, Querétaro', 'notas' => 'Estancia futura confirmada en recepción.'],
+            ['nombre' => 'Diego Castillo', 'email' => 'diego.castillo@demo.hotel', 'telefono' => '5551110110', 'documento' => 'PAS-110', 'nacionalidad' => 'ES', 'direccion' => 'Gran Vía 18, Madrid', 'notas' => 'Viaja con pareja. Habla español e inglés.'],
+            ['nombre' => 'Lucía Romero', 'email' => 'lucia.romero@demo.hotel', 'telefono' => '5551110111', 'documento' => 'INE-111', 'nacionalidad' => 'MX', 'direccion' => 'Av. Hidalgo 77, León', 'notas' => 'Reserva cancelada por cambio de fechas.'],
+            ['nombre' => 'Andrés Paredes', 'email' => 'andres.paredes@demo.hotel', 'telefono' => '5551110112', 'documento' => 'INE-112', 'nacionalidad' => 'MX', 'direccion' => 'Malecón 40, Veracruz', 'notas' => 'Estancia cerrada del mes. Pagó con transferencia.'],
         ];
 
-        if (! $full) {
-            $definitions = array_slice($definitions, 0, 4);
-        }
-
         foreach ($definitions as $definition) {
-            $this->guests[] = Huesped::firstOrCreate(
+            $this->guests[] = Huesped::query()->updateOrCreate(
                 ['email' => $definition['email']],
-                [
-                    'nombre' => $definition['nombre'],
-                    'telefono' => '555'.random_int(1000000, 9999999),
-                    'documento' => $definition['documento'],
-                    'nacionalidad' => 'MX',
-                ]
+                $definition
             );
         }
     }
@@ -118,6 +114,7 @@ class DemoPropertyOperations
     private function loadPosProducts(): void
     {
         $this->posProducts = PosProduct::query()
+            ->with('category.outlet')
             ->whereHas('category.outlet', fn ($q) => $q->where('property_id', $this->property->id))
             ->where('is_active', true)
             ->orderBy('id')
@@ -171,127 +168,124 @@ class DemoPropertyOperations
         }
     }
 
-    private function seedTodayOperations(bool $full): void
+    private function seedLiveOperation(bool $full): void
     {
         $today = now()->startOfDay();
 
+        $this->openStay($this->guests[0], 'A01', $today->copy()->subDays(2), $today->copy()->addDays(2), 0.35, 'efectivo');
+        $this->openStay($this->guests[1], 'B01', $today->copy()->subDays(1), $today->copy()->addDays(3), 0, 'tarjeta');
+
+        if ($full) {
+            $this->openStay($this->guests[2], 'C01', $today->copy()->subDays(3), $today, 0.8, 'tarjeta');
+            $this->openStay($this->guests[3], 'A02', $today->copy()->subDays(4), $today->copy()->addDay(), 1, 'transferencia');
+        }
+
+        $this->assignArrival($this->guests[4], $full ? 'B02' : 'A03', $today, $today->copy()->addDays(3));
         $this->createReservation(
-            $this->guests[0],
-            $this->randomRoomType(),
+            $this->guests[5],
+            $this->typeByCodePrefix('A'),
             $today,
-            $today->copy()->addDays(3),
+            $today->copy()->addDays(2),
             'recepcion',
             'confirmada'
         );
 
-        $departureType = $this->randomRoomType();
-        $departureRoom = $this->pickRoom($departureType, $today->copy()->subDays(2), $today);
-        if ($departureRoom) {
-            $departureReservation = $this->createReservation(
-                $this->guests[1],
-                $departureType,
-                $today->copy()->subDays(2),
-                $today,
-                'recepcion',
-                'confirmada'
-            );
-            $departureStay = $this->performCheckIn(
-                $departureReservation,
-                $departureRoom,
-                $today->copy()->subDays(2)->setTime(14, 0)
-            );
-            $this->addPosCharge($departureStay->folio, $today->copy()->setTime(8, 15), 1);
-        }
+        $this->createReservation(
+            $this->guests[8],
+            $this->typeByCodePrefix('B'),
+            $today->copy()->addDays(4),
+            $today->copy()->addDays(7),
+            'recepcion',
+            'confirmada',
+            roomNumber: 'B03'
+        );
+        $this->createReservation(
+            $this->guests[9],
+            $this->typeByCodePrefix('C'),
+            $today->copy()->addDays(8),
+            $today->copy()->addDays(12),
+            'recepcion',
+            'confirmada',
+            roomNumber: 'C02'
+        );
 
-        $inHouseType = $this->randomRoomType();
-        $inHouseRoom = $this->pickRoom($inHouseType, $today->copy()->subDays(1), $today->copy()->addDays(2));
-        if ($inHouseRoom) {
-            $inHouseReservation = $this->createReservation(
-                $this->guests[2],
-                $inHouseType,
-                $today->copy()->subDays(1),
-                $today->copy()->addDays(2),
-                'recepcion',
-                'confirmada'
-            );
-            $inHouseStay = $this->performCheckIn(
-                $inHouseReservation,
-                $inHouseRoom,
-                $today->copy()->subDays(1)->setTime(16, 30)
-            );
-            $this->addPosCharge($inHouseStay->folio, now(), 2);
-            $this->addPosCharge($inHouseStay->folio, $today->copy()->setTime(13, 0), 1);
-        }
+        $pending = $this->createReservation(
+            $this->guests[6],
+            $this->typeByCodePrefix('A'),
+            $today->copy()->addDay(),
+            $today->copy()->addDays(3),
+            'web',
+            'pendiente',
+            'WEB-'.$this->property->id.'-PEND-01'
+        );
+        $deposit = round((float) $pending->estimated_total * 0.3, 2);
+        $pending->update(['payment_status' => 'pending', 'deposit_amount' => $deposit]);
+
+        $paid = $this->createReservation(
+            $this->guests[7],
+            $this->typeByCodePrefix('B'),
+            $today->copy()->addDays(6),
+            $today->copy()->addDays(9),
+            'web',
+            'pendiente',
+            'WEB-'.$this->property->id.'-PAGO-01'
+        );
+        $paid->update([
+            'payment_status' => 'paid',
+            'deposit_amount' => round((float) $paid->estimated_total * 0.3, 2),
+            'payment_reference' => 'DEMO-ANTICIPO',
+            'paid_at' => $today->copy()->subDay()->setTime(18, 20),
+        ]);
 
         if ($full) {
-            $balanceType = $this->randomRoomType();
-            $balanceRoom = $this->pickRoom($balanceType, $today, $today->copy()->addDays(4));
-            if ($balanceRoom) {
-                $balanceReservation = $this->createReservation(
-                    $this->guests[3],
-                    $balanceType,
-                    $today,
-                    $today->copy()->addDays(4),
-                    'recepcion',
-                    'confirmada'
-                );
-                $balanceStay = $this->performCheckIn($balanceReservation, $balanceRoom, $today->copy()->setTime(12, 0));
-                $this->addPosCharge($balanceStay->folio, $today->copy()->setTime(12, 45), 2);
-                $partial = round((float) $balanceStay->folio->fresh()->balance * 0.4, 2);
-                if ($partial > 0) {
-                    $this->payFolio($balanceStay->folio, $partial, 'efectivo', $today->copy()->setTime(13, 30));
-                }
-            }
-        }
-    }
-
-    private function seedPendingWebReservations(int $count): void
-    {
-        $today = now()->startOfDay();
-
-        for ($i = 0; $i < $count; $i++) {
-            $checkIn = $today->copy()->addDays($i + 1);
             $this->createReservation(
-                $this->guests[$i % count($this->guests)],
-                $this->randomRoomType(),
-                $checkIn,
-                $checkIn->copy()->addDays(2 + ($i % 2)),
+                $this->guests[6],
+                $this->typeByCodePrefix('C'),
+                $today->copy()->addDays(10),
+                $today->copy()->addDays(13),
                 'web',
                 'pendiente',
-                'WEB-'.strtoupper(Str::random(6))
-            );
+                'WEB-'.$this->property->id.'-PEND-02'
+            )->update(['payment_status' => 'pending', 'deposit_amount' => 660]);
         }
-    }
-
-    private function seedFutureReservations(int $count): void
-    {
-        $today = now()->startOfDay();
-
-        for ($i = 0; $i < $count; $i++) {
-            $checkIn = $today->copy()->addDays(5 + ($i * 2));
-            $this->createReservation(
-                $this->guests[($i + 2) % count($this->guests)],
-                $this->randomRoomType(),
-                $checkIn,
-                $checkIn->copy()->addDays(3),
-                'recepcion',
-                'confirmada'
-            );
-        }
-    }
-
-    private function seedCancelledReservation(): void
-    {
-        $today = now()->startOfDay();
 
         $this->createReservation(
-            $this->guests[0],
-            $this->randomRoomType(),
-            $today->copy()->addDays(10),
-            $today->copy()->addDays(12),
+            $this->guests[10],
+            $this->typeByCodePrefix('A'),
+            $today->copy()->addDays(14),
+            $today->copy()->addDays(16),
             'recepcion',
             'cancelada'
         );
+    }
+
+    private function openStay(Huesped $guest, string $number, Carbon $checkIn, Carbon $checkOut, float $payRatio, string $method): void
+    {
+        $room = $this->roomByNumber($number);
+        if (! $room || ! $room->roomType) {
+            return;
+        }
+
+        $reservation = $this->createReservation($guest, $room->roomType, $checkIn, $checkOut, 'recepcion', 'confirmada', roomNumber: $number);
+        $stay = $this->performCheckIn($reservation, $room, $checkIn->copy()->setTime(15, 10));
+        $this->addPosCharge($stay->folio, $checkIn->copy()->addDay()->setTime(9, 0), 1);
+        $this->addPosCharge($stay->folio, now(), 2);
+
+        $balance = (float) $stay->folio->fresh()->balance;
+        $payment = round($balance * $payRatio, 2);
+        if ($payment > 0) {
+            $this->payFolio($stay->folio, $payment, $method, now()->subHour());
+        }
+    }
+
+    private function assignArrival(Huesped $guest, string $number, Carbon $checkIn, Carbon $checkOut): void
+    {
+        $room = $this->roomByNumber($number);
+        if (! $room || ! $room->roomType) {
+            return;
+        }
+
+        $this->createReservation($guest, $room->roomType, $checkIn, $checkOut, 'recepcion', 'confirmada', roomNumber: $number);
     }
 
     private function applyHousekeepingStatuses(bool $full): void
@@ -319,24 +313,44 @@ class DemoPropertyOperations
         Carbon $checkOut,
         string $source,
         string $status,
-        ?string $onlineReference = null
+        ?string $onlineReference = null,
+        ?string $roomNumber = null
     ): Reservation {
+        $roomId = $roomNumber ? $this->roomByNumber($roomNumber)?->id : null;
+
         return Reservation::withoutGlobalScopes()->create([
             'property_id' => $this->property->id,
             'folio' => $this->reservations->generateFolio(),
             'huesped_id' => $guest->id,
             'room_type_id' => $roomType->id,
+            'room_id' => $roomId,
             'check_in' => $checkIn->toDateString(),
             'check_out' => $checkOut->toDateString(),
-            'guests_count' => min(2, max(1, $roomType->capacity)),
+            'guests_count' => min(2, max(1, (int) $roomType->capacity)),
             'status' => $status,
             'source' => $source,
             'online_reference' => $onlineReference,
             'estimated_total' => $this->pricing->estimateStayTotal($roomType, $checkIn, $checkOut),
-            'payment_status' => $source === 'web' ? 'pendiente' : 'pagado',
+            'payment_status' => $source === 'web' ? 'pending' : 'not_required',
             'notes' => self::DEMO_NOTE,
             'created_by' => $this->admin->id,
         ]);
+    }
+
+    private function roomByNumber(string $number): ?Room
+    {
+        return Room::withoutGlobalScopes()
+            ->with('roomType')
+            ->where('property_id', $this->property->id)
+            ->where('number', $number)
+            ->first();
+    }
+
+    private function typeByCodePrefix(string $letter): RoomType
+    {
+        $room = $this->roomByNumber($letter.'01');
+
+        return $room?->roomType ?? $this->randomRoomType();
     }
 
     private function performCheckIn(Reservation $reservation, Room $room, Carbon $at): Stay

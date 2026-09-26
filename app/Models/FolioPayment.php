@@ -13,6 +13,7 @@ class FolioPayment extends Model
         'amount',
         'reference',
         'received_by',
+        'apertura_caja_id',
     ];
 
     protected $casts = [

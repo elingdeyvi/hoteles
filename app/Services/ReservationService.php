@@ -6,6 +6,7 @@ use App\Models\Reservation;
 use App\Models\Room;
 use App\Models\RoomType;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class ReservationService
@@ -42,13 +43,19 @@ class ReservationService
         return ! $query->exists() && $room->is_active && ! in_array($room->status, ['mantenimiento'], true);
     }
 
-    public function availableRoomsCount(RoomType $roomType, Carbon $checkIn, Carbon $checkOut): int
+    public function availableRooms(RoomType $roomType, Carbon $checkIn, Carbon $checkOut, ?int $excludeReservationId = null): Collection
     {
-        $rooms = Room::query()
+        return Room::query()
             ->where('room_type_id', $roomType->id)
             ->where('is_active', true)
-            ->get();
+            ->orderBy('number')
+            ->get()
+            ->filter(fn (Room $room) => $this->isRoomAvailable($room, $checkIn, $checkOut, $excludeReservationId))
+            ->values();
+    }
 
-        return $rooms->filter(fn (Room $room) => $this->isRoomAvailable($room, $checkIn, $checkOut))->count();
+    public function availableRoomsCount(RoomType $roomType, Carbon $checkIn, Carbon $checkOut): int
+    {
+        return $this->availableRooms($roomType, $checkIn, $checkOut)->count();
     }
 }

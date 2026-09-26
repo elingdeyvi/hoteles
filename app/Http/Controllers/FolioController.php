@@ -6,9 +6,11 @@ use App\Models\Folio;
 use App\Services\FolioInvoiceService;
 use App\Services\FolioService;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
+use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class FolioController extends Controller
 {
@@ -17,7 +19,7 @@ class FolioController extends Controller
         private readonly FolioInvoiceService $invoices
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): Response
     {
         $query = Folio::query()
             ->with(['stay.reservation.huesped', 'stay.room', 'charges', 'payments'])
@@ -27,20 +29,25 @@ class FolioController extends Controller
             $query->where('status', $request->string('status'));
         }
 
-        return response()->json(['data' => $query->paginate(20)]);
-    }
-
-    public function show(Folio $folio): JsonResponse
-    {
-        return response()->json([
-            'data' => $folio->load(['stay.reservation.huesped', 'stay.room', 'charges', 'payments.receiver']),
+        return Inertia::render('Hotel/Folios/Index', [
+            'folios' => $query->paginate(20)->withQueryString(),
+            'filters' => $request->only(['status']),
         ]);
     }
 
-    public function addCharge(Request $request, Folio $folio): JsonResponse
+    public function show(Folio $folio): Response
+    {
+        $folio->load(['stay.reservation.huesped', 'stay.room', 'charges', 'payments.receiver']);
+
+        return Inertia::render('Hotel/Folios/Show', [
+            'folio' => $folio,
+        ]);
+    }
+
+    public function addCharge(Request $request, Folio $folio): RedirectResponse
     {
         if ($folio->status !== 'abierto') {
-            return response()->json(['message' => 'El folio está cerrado.'], 422);
+            return back()->with('error', 'El folio está cerrado.');
         }
 
         $data = $request->validate([
@@ -49,20 +56,20 @@ class FolioController extends Controller
             'charge_type' => ['nullable', 'string', 'max:30'],
         ]);
 
-        $charge = $this->folios->addCharge(
+        $this->folios->addCharge(
             $folio,
             $data['concept'],
             (float) $data['amount'],
             $data['charge_type'] ?? 'extra'
         );
 
-        return response()->json(['data' => $charge, 'folio' => $folio->fresh(['charges', 'payments'])]);
+        return back()->with('success', 'Cargo registrado.');
     }
 
-    public function addPayment(Request $request, Folio $folio): JsonResponse
+    public function addPayment(Request $request, Folio $folio): RedirectResponse
     {
         if ($folio->status !== 'abierto') {
-            return response()->json(['message' => 'El folio está cerrado.'], 422);
+            return back()->with('error', 'El folio está cerrado.');
         }
 
         $data = $request->validate([
@@ -71,7 +78,7 @@ class FolioController extends Controller
             'reference' => ['nullable', 'string', 'max:120'],
         ]);
 
-        $payment = $this->folios->registerPayment(
+        $this->folios->registerPayment(
             $folio,
             $data['payment_method'],
             (float) $data['amount'],
@@ -79,21 +86,21 @@ class FolioController extends Controller
             $data['reference'] ?? null
         );
 
-        return response()->json(['data' => $payment, 'folio' => $folio->fresh(['charges', 'payments'])]);
+        return back()->with('success', 'Pago registrado.');
     }
 
-    public function close(Folio $folio): JsonResponse
+    public function close(Folio $folio): RedirectResponse
     {
         if ((float) $folio->balance > 0) {
-            return response()->json(['message' => 'No se puede cerrar con saldo pendiente.'], 422);
+            return back()->with('error', 'No se puede cerrar con saldo pendiente.');
         }
 
-        $closed = $this->folios->close($folio);
+        $this->folios->close($folio);
 
-        return response()->json(['data' => $closed->load(['stay.reservation.huesped', 'stay.room', 'charges', 'payments'])]);
+        return back()->with('success', 'Folio cerrado.');
     }
 
-    public function invoicePdf(Folio $folio): Response
+    public function invoicePdf(Folio $folio): HttpResponse
     {
         $data = $this->invoices->buildViewData($folio);
         $filename = 'factura-'.preg_replace('/[^A-Za-z0-9\-_]/', '_', $folio->folio_number).'.pdf';

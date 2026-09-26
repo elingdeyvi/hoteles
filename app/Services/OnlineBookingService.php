@@ -102,7 +102,7 @@ class OnlineBookingService
     public function lookup(string $folio, string $email): ?Reservation
     {
         return Reservation::query()
-            ->with(['huesped', 'roomType'])
+            ->with(['huesped', 'roomType', 'room'])
             ->where('folio', $folio)
             ->whereHas('huesped', fn ($q) => $q->where('email', $email))
             ->first();

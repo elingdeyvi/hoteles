@@ -3,14 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Huesped;
-use Illuminate\Http\JsonResponse;
+use App\Support\CatalogDelete;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class HuespedController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): Response
     {
-        $perPage = min(100, max(1, (int) $request->get('per_page', 20)));
         $query = Huesped::query();
 
         if ($request->filled('q')) {
@@ -23,12 +25,36 @@ class HuespedController extends Controller
             });
         }
 
-        return response()->json(['data' => $query->orderBy('nombre')->paginate($perPage)]);
+        return Inertia::render('Hotel/Huespedes/Index', [
+            'huespedes' => $query->orderBy('nombre')->paginate(20)->withQueryString(),
+            'filters' => $request->only(['q']),
+        ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate([
+        Huesped::create($this->validated($request));
+
+        return back()->with('success', 'Huésped registrado.');
+    }
+
+    public function update(Request $request, Huesped $huesped): RedirectResponse
+    {
+        $huesped->update($this->validated($request));
+
+        return back()->with('success', 'Huésped actualizado.');
+    }
+
+    public function destroy(Huesped $huesped): RedirectResponse
+    {
+        return CatalogDelete::run($huesped, [
+            'reservaciones' => $huesped->reservations()->exists(),
+        ], 'Huésped eliminado.');
+    }
+
+    private function validated(Request $request): array
+    {
+        return $request->validate([
             'nombre' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'telefono' => ['nullable', 'string', 'max:50'],
@@ -37,36 +63,5 @@ class HuespedController extends Controller
             'direccion' => ['nullable', 'string'],
             'notas' => ['nullable', 'string'],
         ]);
-
-        return response()->json(['data' => Huesped::create($data)], 201);
-    }
-
-    public function show(Huesped $huesped): JsonResponse
-    {
-        return response()->json(['data' => $huesped->load('reservations')]);
-    }
-
-    public function update(Request $request, Huesped $huesped): JsonResponse
-    {
-        $data = $request->validate([
-            'nombre' => ['sometimes', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'telefono' => ['nullable', 'string', 'max:50'],
-            'documento' => ['nullable', 'string', 'max:80'],
-            'nacionalidad' => ['nullable', 'string', 'max:80'],
-            'direccion' => ['nullable', 'string'],
-            'notas' => ['nullable', 'string'],
-        ]);
-
-        $huesped->update($data);
-
-        return response()->json(['data' => $huesped->fresh()]);
-    }
-
-    public function destroy(Huesped $huesped): JsonResponse
-    {
-        $huesped->delete();
-
-        return response()->json(['message' => 'Huésped eliminado.']);
     }
 }

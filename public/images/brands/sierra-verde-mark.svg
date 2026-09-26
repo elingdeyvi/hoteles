@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 8 32 26" role="img" aria-label="Hotel Sierra Verde">
+  <g fill="#1e4d3a">
+    <path d="M4 32 L16 10 L28 32 Z"/>
+    <path d="M14 32 L22 18 L30 32 Z" opacity="0.75"/>
+    <rect x="10" y="26" width="12" height="6" rx="1" fill="#fff"/>
+  </g>
+</svg>

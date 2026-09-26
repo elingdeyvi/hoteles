@@ -24,7 +24,19 @@ class SetCurrentProperty
                         ->firstOrFail();
                 }
                 CurrentProperty::set($property);
-            } elseif ($header = $request->header('X-Property-Id')) {
+            } elseif ($request->session()->has('current_property_id')) {
+                $property = Property::query()
+                    ->where('id', (int) $request->session()->get('current_property_id'))
+                    ->where('is_active', true)
+                    ->first();
+                if ($property) {
+                    CurrentProperty::set($property);
+                } else {
+                    $request->session()->forget('current_property_id');
+                }
+            }
+
+            if (! CurrentProperty::id() && ($header = $request->header('X-Property-Id'))) {
                 $property = Property::query()->where('id', (int) $header)->where('is_active', true)->first();
                 if ($property) {
                     CurrentProperty::set($property);
@@ -40,6 +52,9 @@ class SetCurrentProperty
                 $default = $defaultQuery->first();
                 if ($default) {
                     CurrentProperty::set($default);
+                    if ($user) {
+                        $request->session()->put('current_property_id', $default->id);
+                    }
                 }
             }
 

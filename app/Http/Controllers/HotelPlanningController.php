@@ -5,18 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\Reservation;
 use App\Models\Room;
 use Carbon\Carbon;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class HotelPlanningController extends Controller
 {
-    /**
-     * Eventos para FullCalendar (planning de reservas).
-     */
-    public function calendar(Request $request): JsonResponse
+    public function index(Request $request): Response
     {
-        $from = Carbon::parse($request->get('start', now()->startOfMonth()));
-        $to = Carbon::parse($request->get('end', now()->endOfMonth()));
+        $date = Carbon::parse($request->get('date', now()->toDateString()));
+        $from = $date->copy()->startOfMonth();
+        $to = $date->copy()->endOfMonth();
 
         $reservations = Reservation::query()
             ->with(['huesped', 'roomType', 'room'])
@@ -29,39 +28,8 @@ class HotelPlanningController extends Controller
                             ->where('check_out', '>=', $to);
                     });
             })
+            ->orderBy('check_in')
             ->get();
-
-        $events = $reservations->map(function (Reservation $r) {
-            $roomLabel = $r->room?->number ?? $r->roomType?->name ?? 'Sin habitación';
-
-            return [
-                'id' => $r->id,
-                'title' => "{$r->huesped?->nombre} · {$roomLabel}",
-                'start' => $r->check_in->format('Y-m-d'),
-                'end' => $r->check_out->format('Y-m-d'),
-                'allDay' => true,
-                'backgroundColor' => $this->colorForStatus($r->status),
-                'borderColor' => $this->colorForStatus($r->status),
-                'extendedProps' => [
-                    'folio' => $r->folio,
-                    'status' => $r->status,
-                    'room_type' => $r->roomType?->name,
-                    'room_number' => $r->room?->number,
-                    'guests_count' => $r->guests_count,
-                    'estimated_total' => (float) $r->estimated_total,
-                ],
-            ];
-        });
-
-        return response()->json(['data' => $events]);
-    }
-
-    /**
-     * Matriz habitación × reserva para una fecha (ocupación del día).
-     */
-    public function roomBoard(Request $request): JsonResponse
-    {
-        $date = Carbon::parse($request->get('date', now()->toDateString()));
 
         $rooms = Room::query()
             ->with('roomType')
@@ -70,16 +38,16 @@ class HotelPlanningController extends Controller
             ->orderBy('number')
             ->get();
 
-        $reservations = Reservation::query()
+        $inHouse = Reservation::query()
             ->with(['huesped', 'roomType'])
             ->whereNotIn('status', ['cancelada', 'check_out'])
             ->whereDate('check_in', '<=', $date)
             ->whereDate('check_out', '>', $date)
             ->get();
 
-        $byRoomId = $reservations->whereNotNull('room_id')->keyBy('room_id');
+        $byRoomId = $inHouse->whereNotNull('room_id')->keyBy('room_id');
 
-        $board = $rooms->map(function (Room $room) use ($byRoomId, $date) {
+        $board = $rooms->map(function (Room $room) use ($byRoomId) {
             $reservation = $byRoomId->get($room->id);
 
             return [
@@ -89,30 +57,11 @@ class HotelPlanningController extends Controller
             ];
         });
 
-        $unassigned = $reservations->whereNull('room_id')->values();
-
-        return response()->json([
-            'data' => [
-                'date' => $date->toDateString(),
-                'rooms' => $board,
-                'unassigned_reservations' => $unassigned,
-                'summary' => [
-                    'total_rooms' => $rooms->count(),
-                    'occupied' => $board->where('occupied', true)->count(),
-                    'available' => $board->where('occupied', false)->where(fn ($r) => ! in_array($r['room']->status, ['mantenimiento', 'sucia'], true))->count(),
-                ],
-            ],
+        return Inertia::render('Hotel/Planning/Index', [
+            'date' => $date->toDateString(),
+            'events' => $reservations,
+            'board' => $board,
+            'unassigned' => $inHouse->whereNull('room_id')->values(),
         ]);
-    }
-
-    private function colorForStatus(string $status): string
-    {
-        return match ($status) {
-            'check_in' => '#22c55e',
-            'confirmada' => '#1e5f8a',
-            'pendiente' => '#64748b',
-            'check_out' => '#c4a35a',
-            default => '#94a3b8',
-        };
     }
 }

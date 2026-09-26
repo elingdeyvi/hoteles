@@ -35,6 +35,7 @@ class ConfiguracionEmpresa extends Model
         'favicon_path',
         'color_primario',
         'color_secundario',
+        'tema_modo',
         'terminos_condiciones',
         'ticket_encabezado_nombre',
         'ticket_encabezado_rfc',

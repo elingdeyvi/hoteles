@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Huesped;
 use App\Models\Reservation;
 use App\Models\Room;
 use App\Models\RoomType;
@@ -9,8 +10,11 @@ use App\Services\HotelPricingService;
 use App\Services\OnlineBookingService;
 use App\Services\ReservationService;
 use Carbon\Carbon;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class ReservationController extends Controller
 {
@@ -20,7 +24,7 @@ class ReservationController extends Controller
         private readonly OnlineBookingService $onlineBooking
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): Response
     {
         $query = Reservation::query()
             ->with(['huesped', 'roomType', 'room'])
@@ -42,37 +46,36 @@ class ReservationController extends Controller
             $query->whereDate('check_out', '<=', $request->date('to'));
         }
 
-        return response()->json(['data' => $query->paginate(min(100, max(1, (int) $request->get('per_page', 20))))]);
-    }
+        $availability = null;
+        if ($request->filled('avail_in') && $request->filled('avail_out')) {
+            $checkIn = Carbon::parse($request->get('avail_in'));
+            $checkOut = Carbon::parse($request->get('avail_out'));
+            if ($checkOut->gt($checkIn)) {
+                $availability = RoomType::query()->where('is_active', true)->orderBy('name')->get()->map(function (RoomType $type) use ($checkIn, $checkOut) {
+                    $free = $this->reservations->availableRooms($type, $checkIn, $checkOut);
 
-    public function availability(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'check_in' => ['required', 'date'],
-            'check_out' => ['required', 'date', 'after:check_in'],
-            'room_type_id' => ['nullable', 'exists:room_types,id'],
+                    return [
+                        'room_type' => $type->only(['id', 'name', 'base_price', 'capacity']),
+                        'available_rooms' => $free->count(),
+                        'room_ids' => $free->pluck('id')->values(),
+                        'estimated_total' => $this->pricing->estimateStayTotal($type, $checkIn, $checkOut),
+                        'nightly_rate' => $this->pricing->priceForNight($type, $checkIn),
+                    ];
+                });
+            }
+        }
+
+        return Inertia::render('Hotel/Reservations/Index', [
+            'reservations' => $query->paginate(20)->withQueryString(),
+            'huespedes' => Huesped::query()->orderBy('nombre')->get(['id', 'nombre', 'email']),
+            'roomTypes' => RoomType::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'base_price']),
+            'rooms' => Room::query()->where('is_active', true)->orderBy('number')->get(['id', 'number', 'room_type_id', 'status']),
+            'filters' => $request->only(['status', 'source', 'from', 'to', 'avail_in', 'avail_out']),
+            'availability' => $availability,
         ]);
-
-        $checkIn = Carbon::parse($data['check_in']);
-        $checkOut = Carbon::parse($data['check_out']);
-
-        $types = RoomType::query()->when($data['room_type_id'] ?? null, fn ($q, $id) => $q->where('id', $id))
-            ->where('is_active', true)
-            ->get();
-
-        $result = $types->map(function (RoomType $type) use ($checkIn, $checkOut) {
-            return [
-                'room_type' => $type,
-                'available_rooms' => $this->reservations->availableRoomsCount($type, $checkIn, $checkOut),
-                'estimated_total' => $this->pricing->estimateStayTotal($type, $checkIn, $checkOut),
-                'nightly_rate' => $this->pricing->priceForNight($type, $checkIn),
-            ];
-        });
-
-        return response()->json(['data' => $result]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'huesped_id' => ['required', 'exists:huespedes,id'],
@@ -91,12 +94,19 @@ class ReservationController extends Controller
         if (! empty($data['room_id'])) {
             $room = Room::findOrFail($data['room_id']);
             if (! $this->reservations->isRoomAvailable($room, $checkIn, $checkOut)) {
-                return response()->json(['message' => 'La habitación no está disponible en esas fechas.'], 422);
+                throw ValidationException::withMessages([
+                    'room_id' => 'La habitación no está disponible en esas fechas.',
+                ]);
             }
+        } elseif ($this->reservations->availableRoomsCount($roomType, $checkIn, $checkOut) < 1) {
+            throw ValidationException::withMessages([
+                'room_type_id' => 'No hay habitaciones disponibles de ese tipo en esas fechas.',
+            ]);
         }
 
-        $reservation = Reservation::create([
+        Reservation::create([
             ...$data,
+            'guests_count' => $data['guests_count'] ?? 1,
             'folio' => $this->reservations->generateFolio(),
             'source' => 'recepcion',
             'status' => 'confirmada',
@@ -104,30 +114,22 @@ class ReservationController extends Controller
             'created_by' => $request->user()->id,
         ]);
 
-        return response()->json(['data' => $reservation->load(['huesped', 'roomType', 'room'])], 201);
+        return back()->with('success', 'Reserva confirmada.');
     }
 
-    public function show(Reservation $reservation): JsonResponse
-    {
-        return response()->json([
-            'data' => $reservation->load(['huesped', 'roomType', 'room', 'stays.folio']),
-        ]);
-    }
-
-    public function update(Request $request, Reservation $reservation): JsonResponse
+    public function update(Request $request, Reservation $reservation): RedirectResponse
     {
         $data = $request->validate([
             'room_id' => ['nullable', 'exists:rooms,id'],
-            'check_in' => ['sometimes', 'date'],
-            'check_out' => ['sometimes', 'date', 'after:check_in'],
+            'check_in' => ['required', 'date'],
+            'check_out' => ['required', 'date', 'after:check_in'],
             'guests_count' => ['nullable', 'integer', 'min:1', 'max:20'],
-            'status' => ['nullable', 'string', 'max:30'],
             'notes' => ['nullable', 'string'],
         ]);
 
         $reservation->update($data);
 
-        if ($reservation->roomType && $reservation->check_in && $reservation->check_out) {
+        if ($reservation->roomType) {
             $reservation->update([
                 'estimated_total' => $this->pricing->estimateStayTotal(
                     $reservation->roomType,
@@ -137,28 +139,28 @@ class ReservationController extends Controller
             ]);
         }
 
-        return response()->json(['data' => $reservation->fresh(['huesped', 'roomType', 'room'])]);
+        return back()->with('success', 'Reserva actualizada.');
     }
 
-    public function cancel(Reservation $reservation): JsonResponse
+    public function cancel(Reservation $reservation): RedirectResponse
     {
         if ($reservation->status === 'check_in') {
-            return response()->json(['message' => 'No se puede cancelar una reserva con check-in activo.'], 422);
+            return back()->with('error', 'No se puede cancelar una reserva con check-in activo.');
         }
 
         $reservation->update(['status' => 'cancelada']);
 
-        return response()->json(['data' => $reservation]);
+        return back()->with('success', 'Reserva cancelada.');
     }
 
-    public function confirm(Reservation $reservation): JsonResponse
+    public function confirm(Reservation $reservation): RedirectResponse
     {
         try {
-            $reservation = $this->onlineBooking->confirmWebReservation($reservation);
+            $this->onlineBooking->confirmWebReservation($reservation);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['message' => collect($e->errors())->flatten()->first(), 'errors' => $e->errors()], 422);
+            return back()->with('error', collect($e->errors())->flatten()->first());
         }
 
-        return response()->json(['data' => $reservation]);
+        return back()->with('success', 'Reserva confirmada.');
     }
 }

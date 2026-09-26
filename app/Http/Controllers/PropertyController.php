@@ -4,34 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\ConfiguracionEmpresa;
 use App\Models\Property;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class PropertyController extends Controller
 {
-    /** Listado activo (selector de hotel en header). */
-    public function index(): JsonResponse
-    {
-        $query = Property::query()
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('name');
-
-        $user = auth()->user();
-        if ($user && ! $user->isHotelAdmin()) {
-            $query->whereIn('id', $user->accessiblePropertyIds());
-        }
-
-        return response()->json([
-            'data' => $query->get(['id', 'code', 'name', 'currency', 'booking_enabled']),
-        ]);
-    }
-
-    /** Administración: todos los hoteles. */
-    public function manage(): JsonResponse
+    public function index(): Response
     {
         $properties = Property::query()
             ->withCount(['roomTypes', 'reservations'])
@@ -39,13 +22,29 @@ class PropertyController extends Controller
             ->orderBy('name')
             ->get();
 
-        return response()->json(['data' => $properties]);
+        return Inertia::render('Hotel/Properties/Index', [
+            'properties' => $properties,
+        ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function switch(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'property_id' => ['required', 'integer', 'exists:properties,id'],
+        ]);
+
+        if (! $request->user()->canAccessProperty((int) $data['property_id'])) {
+            abort(403, 'No tiene acceso a este hotel.');
+        }
+
+        $request->session()->put('current_property_id', (int) $data['property_id']);
+
+        return back()->with('success', 'Hotel activo actualizado.');
+    }
+
+    public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request);
-
         $property = Property::create($data);
 
         ConfiguracionEmpresa::query()->create([
@@ -59,19 +58,17 @@ class PropertyController extends Controller
             'activo' => true,
         ]);
 
-        return response()->json(['data' => $property->fresh()], 201);
+        return back()->with('success', 'Hotel creado.');
     }
 
-    public function update(Request $request, Property $property): JsonResponse
+    public function update(Request $request, Property $property): RedirectResponse
     {
-        $data = $this->validated($request, $property);
+        $property->update($this->validated($request, $property));
 
-        $property->update($data);
-
-        return response()->json(['data' => $property->fresh()]);
+        return back()->with('success', 'Hotel actualizado.');
     }
 
-    public function destroy(Property $property): JsonResponse
+    public function destroy(Property $property): RedirectResponse
     {
         if (Property::query()->where('is_active', true)->count() <= 1 && $property->is_active) {
             throw ValidationException::withMessages([
@@ -79,33 +76,27 @@ class PropertyController extends Controller
             ]);
         }
 
-        if ($property->roomTypes()->exists() || $property->reservations()->exists()) {
+        if ($property->roomTypes()->withoutGlobalScopes()->exists() || $property->reservations()->withoutGlobalScopes()->exists()) {
             $property->update(['is_active' => false, 'booking_enabled' => false]);
 
-            return response()->json([
-                'message' => 'El hotel fue desactivado (tiene datos operativos).',
-                'data' => $property->fresh(),
-            ]);
+            return back()->with('success', 'El hotel fue desactivado porque tiene datos operativos.');
         }
 
         ConfiguracionEmpresa::query()->where('property_id', $property->id)->delete();
         $property->delete();
 
-        return response()->json(['message' => 'Hotel eliminado.']);
+        return back()->with('success', 'Hotel eliminado.');
     }
 
     private function validated(Request $request, ?Property $property = null): array
     {
-        $propertyId = $property?->id;
-
         $data = $request->validate([
             'code' => [
-                'sometimes',
-                'required',
+                'nullable',
                 'string',
                 'max:40',
                 'regex:/^[a-z0-9\-]+$/',
-                Rule::unique('properties', 'code')->ignore($propertyId),
+                Rule::unique('properties', 'code')->ignore($property?->id),
             ],
             'name' => ['required', 'string', 'max:120'],
             'timezone' => ['nullable', 'string', 'max:50'],
@@ -120,15 +111,18 @@ class PropertyController extends Controller
 
         if (! $property && empty($data['code'])) {
             $data['code'] = Str::slug($data['name']);
-        }
-
-        if (! empty($data['code'])) {
+        } elseif (! empty($data['code'])) {
             $data['code'] = Str::slug($data['code']);
         }
 
         if (! empty($data['currency'])) {
-            $data['currency'] = strtolower($data['currency']);
+            $data['currency'] = strtoupper($data['currency']);
         }
+
+        $data['timezone'] = $data['timezone'] ?? 'America/Mexico_City';
+        $data['currency'] = $data['currency'] ?? 'MXN';
+        $data['booking_enabled'] = $request->boolean('booking_enabled', true);
+        $data['is_active'] = $request->boolean('is_active', true);
 
         return $data;
     }

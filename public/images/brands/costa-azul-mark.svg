@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 4 32 32" role="img" aria-label="Hotel Costa Azul">
+  <g fill="#1a365d">
+    <rect x="0" y="4" width="32" height="32" rx="4"/>
+    <rect x="6" y="22" width="6" height="14" fill="#fff"/>
+    <rect x="13" y="18" width="6" height="18" fill="#fff"/>
+    <rect x="20" y="22" width="6" height="14" fill="#fff"/>
+    <rect x="4" y="12" width="24" height="4" fill="#fff"/>
+  </g>
+</svg>
