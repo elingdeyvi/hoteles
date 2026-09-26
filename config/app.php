@@ -30,6 +30,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Rutas de setup (storage:link en /api/storage-link)
+    |--------------------------------------------------------------------------
+    |
+    | En local y testing la ruta responde sola. En otros entornos hay que
+    | poner ALLOW_DEV_SETUP_ROUTES=true para habilitarla.
+    |
+    */
+
+    'allow_dev_setup_routes' => env('ALLOW_DEV_SETUP_ROUTES', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Debug Mode
     |--------------------------------------------------------------------------
     |

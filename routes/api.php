@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -11,6 +12,18 @@ use Illuminate\Support\Facades\Route;
 | Primary app routes live in web.php (Inertia + session).
 |
 */
+
+Route::middleware('dev.setup')->get('/storage-link', function () {
+    $code = Artisan::call('storage:link');
+    $output = trim(Artisan::output());
+    $yaExiste = str_contains($output, 'already exists');
+    $ok = $code === 0 || $yaExiste;
+
+    return response()->json([
+        'success' => $ok,
+        'output' => $yaExiste ? 'El enlace public/storage ya existe.' : $output,
+    ], $ok ? 200 : 500);
+});
 
 Route::middleware('auth:sanctum')->get('/user', function (\Illuminate\Http\Request $request) {
     return $request->user();

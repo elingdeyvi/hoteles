@@ -81,16 +81,20 @@ Route::middleware(['auth', 'verified', 'property.context'])->group(function () {
 
     Route::middleware('permission:recepcion.huespedes')->group(function () {
         Route::get('/hotel/huespedes', [HuespedController::class, 'index'])->name('huespedes.index');
-        Route::post('/hotel/huespedes', [HuespedController::class, 'store'])->name('huespedes.store');
         Route::put('/hotel/huespedes/{huesped}', [HuespedController::class, 'update'])->name('huespedes.update');
         Route::delete('/hotel/huespedes/{huesped}', [HuespedController::class, 'destroy'])->name('huespedes.destroy');
     });
 
-    Route::get('/hotel/planning', [HotelPlanningController::class, 'index'])
-        ->middleware('permission:recepcion.reservas')
-        ->name('planning.index');
+    // Alta rápida desde reservas (mismo endpoint JSON/Inertia).
+    Route::post('/hotel/huespedes', [HuespedController::class, 'store'])
+        ->middleware('permission:recepcion.huespedes|recepcion.reservas')
+        ->name('huespedes.store');
 
     Route::middleware('permission:recepcion.reservas')->group(function () {
+        Route::get('/hotel/planning', [HotelPlanningController::class, 'index'])->name('planning.index');
+        Route::get('/hotel/planning/calendar', [HotelPlanningController::class, 'calendar'])->name('planning.calendar');
+        Route::get('/hotel/planning/room-board', [HotelPlanningController::class, 'roomBoard'])->name('planning.room-board');
+
         Route::get('/hotel/reservas', [ReservationController::class, 'index'])->name('reservas.index');
         Route::post('/hotel/reservas', [ReservationController::class, 'store'])->name('reservas.store');
         Route::put('/hotel/reservas/{reservation}', [ReservationController::class, 'update'])->name('reservas.update');

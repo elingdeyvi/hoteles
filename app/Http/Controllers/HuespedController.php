@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Huesped;
 use App\Support\CatalogDelete;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,6 +12,7 @@ use Inertia\Response;
 
 class HuespedController extends Controller
 {
+
     public function index(Request $request): Response
     {
         $query = Huesped::query();
@@ -31,9 +33,16 @@ class HuespedController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
-        Huesped::create($this->validated($request));
+        $huesped = Huesped::create($this->validated($request));
+
+        if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'data' => $huesped->only(['id', 'nombre', 'email', 'telefono', 'documento']),
+                'message' => 'Huésped registrado.',
+            ], JsonResponse::HTTP_CREATED);
+        }
 
         return back()->with('success', 'Huésped registrado.');
     }

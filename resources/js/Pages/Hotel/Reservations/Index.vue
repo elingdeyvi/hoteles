@@ -1,5 +1,6 @@
 <script setup>
 import CompartirTicketModal from '@/Components/CompartirTicketModal.vue';
+import QuickCreateModal from '@/Components/QuickCreateModal.vue';
 import TicketPrintModal from '@/Components/TicketPrintModal.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { prepararReserva } from '@/utils/compartirTicket';
@@ -16,6 +17,23 @@ const props = defineProps({
 });
 
 const showModal = ref(false);
+const showHuespedModal = ref(false);
+const guestList = ref([...(props.huespedes || [])]);
+const huespedFields = [
+    { key: 'nombre', label: 'Nombre', required: true },
+    { key: 'email', label: 'Correo', type: 'email' },
+    { key: 'telefono', label: 'Teléfono' },
+    { key: 'documento', label: 'Documento' },
+    { key: 'nacionalidad', label: 'Nacionalidad' },
+    { key: 'notas', label: 'Notas', type: 'textarea' },
+];
+
+watch(
+    () => props.huespedes,
+    (list) => {
+        guestList.value = [...(list || [])];
+    },
+);
 const localFilters = ref({
     status: props.filters?.status || '',
     source: props.filters?.source || '',
@@ -109,15 +127,26 @@ watch(selectableRooms, (rooms) => {
     }
 });
 
-const openCreate = () => {
+const openCreate = (opts = {}) => {
     form.reset();
     form.clearErrors();
     form.guests_count = 1;
-    form.check_in = fechaHotel(0);
-    form.check_out = fechaHotel(1);
+    form.check_in = opts.check_in || fechaHotel(0);
+    form.check_out = opts.check_out || fechaHotel(1);
+    if (form.check_out <= form.check_in) {
+        const [y, m, d] = form.check_in.split('-').map(Number);
+        form.check_out = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+    }
     showModal.value = true;
     consult();
 };
+
+if (props.filters?.create) {
+    openCreate({
+        check_in: props.filters.check_in || undefined,
+        check_out: props.filters.check_out || undefined,
+    });
+}
 
 const submit = () => {
     form.transform((data) => ({
@@ -132,6 +161,21 @@ const submit = () => {
             form.reset();
         },
     });
+};
+
+const onHuespedCreated = (guest) => {
+    const entry = {
+        id: guest.id,
+        nombre: guest.nombre,
+        email: guest.email ?? null,
+    };
+    if (!guestList.value.some((g) => String(g.id) === String(entry.id))) {
+        guestList.value = [...guestList.value, entry].sort((a, b) =>
+            String(a.nombre).localeCompare(String(b.nombre), 'es'),
+        );
+    }
+    form.huesped_id = entry.id;
+    showHuespedModal.value = false;
 };
 </script>
 
@@ -207,10 +251,22 @@ const submit = () => {
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Huésped</label>
-                                <select v-model="form.huesped_id" class="form-select" :class="{ 'is-invalid': form.errors.huesped_id }" required>
-                                    <option value="">Seleccione</option>
-                                    <option v-for="guest in huespedes" :key="guest.id" :value="guest.id">{{ guest.nombre }}</option>
-                                </select>
+                                <div class="input-group">
+                                    <select v-model="form.huesped_id" class="form-select" :class="{ 'is-invalid': form.errors.huesped_id }" required>
+                                        <option value="">Seleccione</option>
+                                        <option v-for="guest in guestList" :key="guest.id" :value="guest.id">{{ guest.nombre }}</option>
+                                    </select>
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-primary"
+                                        title="Agregar huésped"
+                                        @click="showHuespedModal = true"
+                                    >
+                                        <i class="fa-solid fa-user-plus"></i>
+                                        <span class="d-none d-sm-inline ms-1">Nuevo</span>
+                                    </button>
+                                </div>
+                                <div class="form-text">Si no está en la lista, agréguelo aquí.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Tipo</label>
@@ -263,6 +319,14 @@ const submit = () => {
                 </div>
             </div>
         </Teleport>
+        <QuickCreateModal
+            :show="showHuespedModal"
+            title="Nuevo huésped"
+            route-name="huespedes.store"
+            :fields="huespedFields"
+            @close="showHuespedModal = false"
+            @created="onHuespedCreated"
+        />
         <CompartirTicketModal ref="compartirRef" />
         <TicketPrintModal ref="ticketRef" />
     </AuthenticatedLayout>

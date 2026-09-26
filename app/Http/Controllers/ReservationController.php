@@ -70,7 +70,7 @@ class ReservationController extends Controller
             'huespedes' => Huesped::query()->orderBy('nombre')->get(['id', 'nombre', 'email']),
             'roomTypes' => RoomType::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'base_price']),
             'rooms' => Room::query()->where('is_active', true)->orderBy('number')->get(['id', 'number', 'room_type_id', 'status']),
-            'filters' => $request->only(['status', 'source', 'from', 'to', 'avail_in', 'avail_out']),
+            'filters' => $request->only(['status', 'source', 'from', 'to', 'avail_in', 'avail_out', 'create', 'check_in', 'check_out']),
             'availability' => $availability,
         ]);
     }

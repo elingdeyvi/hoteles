@@ -8,6 +8,7 @@ use App\Models\Reservation;
 use App\Services\PosReportService;
 use App\Support\CsvResponse;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -20,9 +21,7 @@ class HotelReportController extends Controller
 
     public function index(Request $request): Response
     {
-        $from = Carbon::parse($request->date('from', now()->startOfMonth()))->startOfDay();
-        $to = Carbon::parse($request->date('to', now()))->endOfDay();
-        $date = Carbon::parse($request->date('date', now()));
+        [$from, $to, $date] = $this->resolveReportDates($request);
 
         $occupancy = Reservation::query()
             ->whereNotIn('status', ['cancelada'])
@@ -88,6 +87,7 @@ class HotelReportController extends Controller
                 'from' => $from->toDateString(),
                 'to' => $to->toDateString(),
                 'date' => $date->toDateString(),
+                'outlet_id' => $request->integer('outlet_id') ?: null,
             ],
             'occupancy' => $occupancy,
             'revenue' => [
@@ -103,8 +103,7 @@ class HotelReportController extends Controller
 
     public function exportPosSales(Request $request): StreamedResponse
     {
-        $from = Carbon::parse($request->date('from', now()->startOfMonth()))->startOfDay();
-        $to = Carbon::parse($request->date('to', now()))->endOfDay();
+        [$from, $to] = $this->resolveReportRange($request);
         $lines = $this->posReports->salesDetailLines($from, $to, $request->integer('outlet_id') ?: null);
         $rows = $lines->map(fn ($line) => [
             Carbon::parse($line->created_at)->format('Y-m-d H:i'),
@@ -126,8 +125,7 @@ class HotelReportController extends Controller
 
     public function exportRevenue(Request $request): StreamedResponse
     {
-        $from = Carbon::parse($request->date('from', now()->startOfMonth()))->startOfDay();
-        $to = Carbon::parse($request->date('to', now()))->endOfDay();
+        [$from, $to] = $this->resolveReportRange($request);
 
         $byDay = FolioPayment::query()
             ->whereBetween('created_at', [$from, $to])
@@ -142,5 +140,43 @@ class HotelReportController extends Controller
         }
 
         return CsvResponse::download('ingresos_'.$from->format('Ymd').'_'.$to->format('Ymd').'.csv', ['Sección', 'Concepto', 'Total'], $rows);
+    }
+
+    /**
+     * @return array{0: CarbonInterface, 1: CarbonInterface, 2: CarbonInterface}
+     */
+    private function resolveReportDates(Request $request): array
+    {
+        [$from, $to] = $this->resolveReportRange($request);
+        $date = $this->asCarbon($request->date('date'), now())->copy()->startOfDay();
+
+        return [$from, $to, $date];
+    }
+
+    /**
+     * @return array{0: CarbonInterface, 1: CarbonInterface}
+     */
+    private function resolveReportRange(Request $request): array
+    {
+        $from = $this->asCarbon($request->date('from'), now()->copy()->startOfMonth())->copy()->startOfDay();
+        $to = $this->asCarbon($request->date('to'), now())->copy()->endOfDay();
+
+        return [$from, $to];
+    }
+
+    /**
+     * $request->date() ya devuelve Carbon|null; no envolver en Carbon::parse().
+     */
+    private function asCarbon(mixed $value, CarbonInterface $fallback): CarbonInterface
+    {
+        if ($value instanceof CarbonInterface) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            return Carbon::parse($value);
+        }
+
+        return $fallback;
     }
 }
