@@ -24,9 +24,15 @@ const canSchedule = computed(() => boardDate.value >= props.today);
 const statusLabel = {
     pendiente: 'Pendiente',
     confirmada: 'Confirmada',
-    check_in: 'Check-in',
-    check_out: 'Check-out',
+    check_in: 'Entrada',
+    check_out: 'Salida',
     cancelada: 'Cancelada',
+    disponible: 'Disponible',
+    limpia: 'Limpia',
+    sucia: 'Sucia',
+    mantenimiento: 'Mantenimiento',
+    ocupada: 'Ocupada',
+    libre: 'Libre',
 };
 
 const money = (n) => Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
@@ -115,9 +121,9 @@ onMounted(() => {
 </script>
 
 <template>
-    <Head title="Planning" />
+    <Head title="Planeación" />
     <AuthenticatedLayout>
-        <template #header>Planning</template>
+        <template #header>Planeación de reservas</template>
 
         <div class="row g-3">
             <div class="col-xl-8">
@@ -141,9 +147,9 @@ onMounted(() => {
                         <FullCalendar ref="calendarRef" :options="calendarOptions" />
                         <div class="d-flex flex-wrap gap-3 mt-3 small text-muted">
                             <span><span class="legend-dot" style="background:#1e5f8a"></span> Confirmada</span>
-                            <span><span class="legend-dot" style="background:#22c55e"></span> Check-in</span>
+                            <span><span class="legend-dot" style="background:#22c55e"></span> Entrada</span>
                             <span><span class="legend-dot" style="background:#64748b"></span> Pendiente</span>
-                            <span><span class="legend-dot" style="background:#c4a35a"></span> Check-out</span>
+                            <span><span class="legend-dot" style="background:#c4a35a"></span> Salida</span>
                         </div>
                     </div>
                 </div>
@@ -215,7 +221,7 @@ onMounted(() => {
                                         class="badge"
                                         :class="row.occupied ? 'text-bg-danger' : 'text-bg-success'"
                                     >
-                                        {{ row.occupied ? 'Ocupada' : (row.room.status || 'libre') }}
+                                        {{ row.occupied ? 'Ocupada' : (statusLabel[row.room.status] || 'Libre') }}
                                     </span>
                                 </div>
                             </div>
@@ -253,7 +259,7 @@ onMounted(() => {
                             :href="route('reservas.check-in', selectedEvent.id)"
                             class="btn btn-sm btn-success"
                         >
-                            Ir a check-in
+                            Registrar entrada
                         </Link>
                     </div>
                 </div>

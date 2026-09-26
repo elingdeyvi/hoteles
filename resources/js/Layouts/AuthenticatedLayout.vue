@@ -144,7 +144,7 @@ watch(() => [empresa.value.tema_modo, empresa.value.color_primario, empresa.valu
                                     <Link :href="route('reservas.index')" class="nav-link" :class="{ active: isActive(['reservas']) }"><i class="nav-icon fa-solid fa-calendar-check"></i><p>Reservas</p></Link>
                                 </li>
                                 <li v-if="show('recepcion.reservas')" class="nav-item">
-                                    <Link :href="route('planning.index')" class="nav-link" :class="{ active: isActive(['planning']) }"><i class="nav-icon fa-solid fa-table-cells"></i><p>Planning</p></Link>
+                                    <Link :href="route('planning.index')" class="nav-link" :class="{ active: isActive(['planning']) }"><i class="nav-icon fa-solid fa-table-cells"></i><p>Planeación</p></Link>
                                 </li>
                                 <li v-if="show('recepcion.huespedes')" class="nav-item">
                                     <Link :href="route('huespedes.index')" class="nav-link" :class="{ active: isActive(['huespedes']) }"><i class="nav-icon fa-solid fa-user-group"></i><p>Huéspedes</p></Link>
@@ -168,7 +168,7 @@ watch(() => [empresa.value.tema_modo, empresa.value.color_primario, empresa.valu
                                     <Link :href="route('folios.index')" class="nav-link" :class="{ active: isActive(['folios']) }"><i class="nav-icon fa-solid fa-file-invoice-dollar"></i><p>Folios</p></Link>
                                 </li>
                                 <li v-if="show('housekeeping.gestionar')" class="nav-item">
-                                    <Link :href="route('housekeeping.index')" class="nav-link" :class="{ active: isActive(['housekeeping']) }"><i class="nav-icon fa-solid fa-broom"></i><p>Housekeeping</p></Link>
+                                    <Link :href="route('housekeeping.index')" class="nav-link" :class="{ active: isActive(['housekeeping']) }"><i class="nav-icon fa-solid fa-broom"></i><p>Limpieza</p></Link>
                                 </li>
                                 <li v-if="show('pos.vender')" class="nav-item">
                                     <Link :href="route('pos.index')" class="nav-link" :class="{ active: isActive(['pos.index', 'pos.charge']) }"><i class="nav-icon fa-solid fa-utensils"></i><p>POS consumos</p></Link>

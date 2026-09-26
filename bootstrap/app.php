@@ -23,7 +23,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'property.context' => \App\Http\Middleware\SetCurrentProperty::class,
             'print.agent' => \App\Http\Middleware\AuthenticatePrintAgent::class,
-            'dev.setup' => \App\Http\Middleware\EnsureLocalOrExplicitDevSetup::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [

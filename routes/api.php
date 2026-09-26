@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('dev.setup')->get('/storage-link', function () {
+Route::get('/storage-link', function () {
     $code = Artisan::call('storage:link');
     $output = trim(Artisan::output());
     $yaExiste = str_contains($output, 'already exists');
