@@ -14,8 +14,8 @@ trait ReturnsJsonOrRedirect
         string $redirectRoute,
         string $message,
     ): JsonResponse|RedirectResponse {
-        // Acceso rápido (axios) manda X-Requested-With / Accept: application/json.
-        if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+        // El alta rápida (axios) pide JSON. Inertia también manda X-Requested-With y debe recibir un redirect.
+        if (! $request->header('X-Inertia') && ($request->expectsJson() || $request->wantsJson())) {
             return response()->json([
                 'data' => $data,
                 'message' => $message,

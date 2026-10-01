@@ -28,6 +28,8 @@ class RoomTypeController extends Controller
             'capacity' => ['nullable', 'integer', 'min:1', 'max:20'],
             'amenities' => ['nullable', 'string'],
             'base_price' => ['required', 'numeric', 'min:0'],
+            'hourly_price' => ['nullable', 'numeric', 'min:0'],
+            'extra_person_price' => ['nullable', 'numeric', 'min:0'],
             'is_active' => ['boolean'],
         ]);
 
@@ -50,6 +52,8 @@ class RoomTypeController extends Controller
             'capacity' => ['nullable', 'integer', 'min:1', 'max:20'],
             'amenities' => ['nullable', 'string'],
             'base_price' => ['required', 'numeric', 'min:0'],
+            'hourly_price' => ['nullable', 'numeric', 'min:0'],
+            'extra_person_price' => ['nullable', 'numeric', 'min:0'],
             'is_active' => ['boolean'],
         ]);
 

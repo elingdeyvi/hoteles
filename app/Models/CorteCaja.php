@@ -26,10 +26,13 @@ class CorteCaja extends Model
         'total_transferencia',
         'total_otros',
         'total_cobros',
+        'total_ingresos',
+        'total_egresos',
         'total_esperado',
         'total_real',
         'diferencia',
         'observaciones',
+        'conteo',
     ];
 
     protected $casts = [
@@ -40,10 +43,13 @@ class CorteCaja extends Model
         'total_transferencia' => 'decimal:2',
         'total_otros' => 'decimal:2',
         'total_cobros' => 'decimal:2',
+        'total_ingresos' => 'decimal:2',
+        'total_egresos' => 'decimal:2',
         'total_esperado' => 'decimal:2',
         'total_real' => 'decimal:2',
         'diferencia' => 'decimal:2',
         'fecha_corte' => 'datetime',
+        'conteo' => 'array',
     ];
 
     public function apertura(): BelongsTo

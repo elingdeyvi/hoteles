@@ -37,6 +37,7 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                'venta_publica' => fn () => $request->session()->get('venta_publica'),
             ],
             'appName' => config('app.name', 'Hotel'),
             'empresa' => fn () => $this->empresaProps(),

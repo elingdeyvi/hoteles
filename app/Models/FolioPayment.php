@@ -11,6 +11,8 @@ class FolioPayment extends Model
         'folio_id',
         'payment_method',
         'amount',
+        'recibido',
+        'cambio',
         'reference',
         'received_by',
         'apertura_caja_id',
@@ -18,6 +20,8 @@ class FolioPayment extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'recibido' => 'decimal:2',
+        'cambio' => 'decimal:2',
     ];
 
     public function folio(): BelongsTo

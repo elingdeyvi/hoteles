@@ -18,12 +18,16 @@ class RoomType extends Model
         'capacity',
         'amenities',
         'base_price',
+        'hourly_price',
+        'extra_person_price',
         'is_active',
     ];
 
     protected $casts = [
         'amenities' => 'array',
         'base_price' => 'decimal:2',
+        'hourly_price' => 'decimal:2',
+        'extra_person_price' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 

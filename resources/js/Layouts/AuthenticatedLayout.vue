@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
+import { sesionAviso } from '@/sesionAviso';
 import { usePermissions } from '@/composables/usePermissions';
 import { applyPosTheme } from '@/composables/useTheme';
 
@@ -30,12 +31,13 @@ const show = (perm) => hasRole('Administrador') || can(perm);
 
 const groups = computed(() => ({
     recepcion: show('recepcion.reservas') || show('recepcion.huespedes') || show('recepcion.checkin'),
-    operacion: show('facturacion.folios') || show('housekeeping.gestionar') || show('pos.vender') || show('reportes.ver') || show('caja.operar'),
+    operacion: show('facturacion.folios') || show('housekeeping.gestionar') || show('pos.vender') || show('pos.catalogo') || show('caja.operar'),
+    reportes: show('reportes.ver'),
     config: show('hotel.configurar'),
     admin: show('administracion.usuarios') || show('administracion.roles'),
 }));
 
-const open = reactive({ recepcion: false, operacion: false, config: false, admin: false });
+const open = reactive({ recepcion: false, operacion: false, reportes: false, config: false, admin: false });
 
 const isActive = (names) => {
     const current = route().current();
@@ -44,7 +46,8 @@ const isActive = (names) => {
 
 const initOpenGroups = () => {
     open.recepcion = isActive(['reservas', 'huespedes', 'planning']);
-    open.operacion = isActive(['folios', 'housekeeping', 'pos', 'reportes', 'caja']);
+    open.operacion = isActive(['folios', 'housekeeping', 'pos', 'caja', 'inventario']);
+    open.reportes = isActive(['reportes']);
     open.config = isActive(['propiedades', 'tipos', 'habitaciones', 'tarifas', 'configuracion-empresa', 'impresion']);
     open.admin = isActive(['users', 'roles']);
 };
@@ -171,13 +174,31 @@ watch(() => [empresa.value.tema_modo, empresa.value.color_primario, empresa.valu
                                     <Link :href="route('housekeeping.index')" class="nav-link" :class="{ active: isActive(['housekeeping']) }"><i class="nav-icon fa-solid fa-broom"></i><p>Limpieza</p></Link>
                                 </li>
                                 <li v-if="show('pos.vender')" class="nav-item">
-                                    <Link :href="route('pos.index')" class="nav-link" :class="{ active: isActive(['pos.index', 'pos.charge']) }"><i class="nav-icon fa-solid fa-utensils"></i><p>POS consumos</p></Link>
+                                    <Link :href="route('pos.index')" class="nav-link" :class="{ active: isActive(['pos.index', 'pos.charge', 'pos.vender']) }"><i class="nav-icon fa-solid fa-cash-register"></i><p>Venta al público</p></Link>
                                 </li>
                                 <li v-if="show('pos.catalogo')" class="nav-item">
                                     <Link :href="route('pos.catalog')" class="nav-link" :class="{ active: isActive(['pos.catalog']) }"><i class="nav-icon fa-solid fa-tags"></i><p>Catálogo POS</p></Link>
                                 </li>
-                                <li v-if="show('reportes.ver')" class="nav-item">
-                                    <Link :href="route('reportes.index')" class="nav-link" :class="{ active: isActive(['reportes']) }"><i class="nav-icon fa-solid fa-chart-column"></i><p>Reportes</p></Link>
+                                <li v-if="show('pos.catalogo')" class="nav-item">
+                                    <Link :href="route('inventario.index')" class="nav-link" :class="{ active: isActive(['inventario']) }"><i class="nav-icon fa-solid fa-boxes-stacked"></i><p>Inventario</p></Link>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li v-if="groups.reportes" class="nav-item">
+                            <a href="#" class="nav-link" @click.prevent="toggle('reportes')">
+                                <i class="nav-icon fa-solid fa-chart-pie"></i>
+                                <p>Reportes <i class="nav-arrow fa-solid" :class="open.reportes ? 'fa-angle-down' : 'fa-angle-left'"></i></p>
+                            </a>
+                            <ul class="nav nav-treeview" :style="{ display: open.reportes ? 'block' : 'none' }">
+                                <li class="nav-item">
+                                    <Link :href="route('reportes.ventas.index')" class="nav-link" :class="{ active: isActive(['reportes.ventas']) }"><i class="nav-icon fa-solid fa-chart-column"></i><p>Ventas</p></Link>
+                                </li>
+                                <li class="nav-item">
+                                    <Link :href="route('reportes.inventario.index')" class="nav-link" :class="{ active: isActive(['reportes.inventario']) }"><i class="nav-icon fa-solid fa-chart-line"></i><p>Inventario</p></Link>
+                                </li>
+                                <li class="nav-item">
+                                    <Link :href="route('reportes.index')" class="nav-link" :class="{ active: route().current() === 'reportes.index' }"><i class="nav-icon fa-solid fa-bed"></i><p>Operación</p></Link>
                                 </li>
                             </ul>
                         </li>
@@ -226,6 +247,7 @@ watch(() => [empresa.value.tema_modo, empresa.value.color_primario, empresa.valu
             </div>
             <div class="app-content">
                 <div class="container-fluid">
+                    <div v-if="sesionAviso.texto" class="alert alert-warning">{{ sesionAviso.texto }}</div>
                     <div v-if="flash.success" class="alert alert-success">{{ flash.success }}</div>
                     <div v-if="flash.error" class="alert alert-danger">{{ flash.error }}</div>
                     <slot />

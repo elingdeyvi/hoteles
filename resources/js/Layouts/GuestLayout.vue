@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
+import { sesionAviso } from '@/sesionAviso';
 
 const page = usePage();
 const empresa = computed(() => page.props.empresa ?? {});
@@ -17,6 +18,7 @@ const logoUrl = computed(() => empresa.value.logo_url || '/favicon.ico');
                     <div class="login-form-brand text-center mb-4">
                         <img :src="logoUrl" :alt="appName" class="login-logo login-logo--hero" />
                     </div>
+                    <div v-if="sesionAviso.texto" class="alert alert-warning">{{ sesionAviso.texto }}</div>
                     <slot />
                 </div>
             </div>

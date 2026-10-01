@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Folio;
+use App\Models\FolioCharge;
 use App\Services\FolioInvoiceService;
 use App\Services\FolioService;
+use Illuminate\Validation\ValidationException;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,6 +68,17 @@ class FolioController extends Controller
         return back()->with('success', 'Cargo registrado.');
     }
 
+    public function destroyCharge(Request $request, Folio $folio, FolioCharge $charge): RedirectResponse
+    {
+        try {
+            $this->folios->removeCharge($folio, $charge, $request->user()?->id);
+        } catch (ValidationException $exception) {
+            return back()->with('error', collect($exception->errors())->flatten()->first());
+        }
+
+        return back()->with('success', 'Cargo quitado.');
+    }
+
     public function addPayment(Request $request, Folio $folio): RedirectResponse
     {
         if ($folio->status !== 'abierto') {
@@ -74,19 +87,27 @@ class FolioController extends Controller
 
         $data = $request->validate([
             'payment_method' => ['required', 'string', 'max:30'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
+            'recibido' => ['nullable', 'numeric', 'min:0'],
             'reference' => ['nullable', 'string', 'max:120'],
         ]);
 
-        $this->folios->registerPayment(
+        $resultado = $this->folios->cobrarYCerrar(
             $folio,
             $data['payment_method'],
-            (float) $data['amount'],
+            isset($data['recibido']) ? (float) $data['recibido'] : null,
             $request->user()->id,
             $data['reference'] ?? null
         );
 
-        return back()->with('success', 'Pago registrado.');
+        $mensaje = 'Folio cerrado.';
+        if ($resultado['saldo'] > 0) {
+            $mensaje = 'Cobro registrado y folio cerrado.';
+            if ($resultado['cambio'] > 0) {
+                $mensaje .= ' Cambio: $'.number_format($resultado['cambio'], 2).'.';
+            }
+        }
+
+        return back()->with('success', $mensaje);
     }
 
     public function close(Folio $folio): RedirectResponse

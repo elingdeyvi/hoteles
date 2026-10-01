@@ -53,6 +53,46 @@ class PosController extends Controller
         return back()->with('success', 'Consumo cargado al folio.');
     }
 
+    public function vender(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'destino' => ['required', 'in:publico,habitacion'],
+            'folio_id' => ['required_if:destino,habitacion', 'nullable', 'exists:folios,id'],
+            'payment_method' => ['required_if:destino,publico', 'nullable', 'string', 'max:30'],
+            'recibido' => ['nullable', 'numeric', 'min:0'],
+            'lines' => ['required', 'array', 'min:1'],
+            'lines.*.product_id' => ['required', 'exists:pos_products,id'],
+            'lines.*.quantity' => ['nullable', 'integer', 'min:1', 'max:99'],
+        ]);
+
+        if ($data['destino'] === 'habitacion') {
+            $folio = Folio::findOrFail($data['folio_id']);
+            $this->pos->chargeToFolio($folio, $data['lines'], $request->user()->id);
+
+            return back()->with('success', 'Consumo cargado a la habitación.');
+        }
+
+        $resultado = $this->pos->venderPublico(
+            $data['lines'],
+            (string) $data['payment_method'],
+            isset($data['recibido']) ? (float) $data['recibido'] : null,
+            $request->user()->id
+        );
+        $venta = $resultado['venta'];
+        $mensaje = 'Venta '.$venta->numero.' cobrada.';
+        if ($resultado['cambio'] > 0) {
+            $mensaje .= ' Cambio: $'.number_format($resultado['cambio'], 2).'.';
+        }
+
+        return back()->with('success', $mensaje)->with('venta_publica', [
+            'id' => $venta->id,
+            'numero' => $venta->numero,
+            'total' => (float) $venta->total,
+            'cambio' => $resultado['cambio'],
+            'metodo' => $venta->payment_method,
+        ]);
+    }
+
     public function catalog(): Response
     {
         return Inertia::render('Hotel/Pos/Catalog', [
@@ -102,10 +142,33 @@ class PosController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'sku' => ['nullable', 'string', 'max:40'],
             'price' => ['required', 'numeric', 'min:0'],
+            'iva_porcentaje' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'aplicar_iva' => ['boolean'],
+            'costo' => ['nullable', 'numeric', 'min:0'],
+            'piezas_caja' => ['nullable', 'integer', 'min:1', 'max:999'],
+            'bodega' => ['nullable', 'numeric', 'min:0'],
+            'exhibicion' => ['nullable', 'numeric', 'min:0'],
+            'controla_inventario' => ['boolean'],
+            'stock_actual' => ['nullable', 'numeric', 'min:0'],
+            'stock_minimo' => ['nullable', 'numeric', 'min:0'],
             'is_active' => ['boolean'],
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);
+        $data['controla_inventario'] = $request->boolean('controla_inventario');
+        $data['stock_actual'] = $data['controla_inventario'] ? ($data['stock_actual'] ?? 0) : 0;
+        $data['stock_minimo'] = $data['stock_minimo'] ?? 0;
+        $data['costo'] = $data['costo'] ?? 0;
+        $data['iva_porcentaje'] = $data['iva_porcentaje'] ?? 16;
+        $data['aplicar_iva'] = $request->boolean('aplicar_iva');
+        $data['piezas_caja'] = $data['piezas_caja'] ?? 1;
+        $data['bodega'] = $data['bodega'] ?? 0;
+        $data['exhibicion'] = $data['exhibicion'] ?? 0;
+        if (((float) $data['bodega'] + (float) $data['exhibicion']) > 0) {
+            $data['stock_actual'] = (float) $data['bodega'] + (float) $data['exhibicion'];
+        } elseif ($data['controla_inventario']) {
+            $data['bodega'] = $data['stock_actual'];
+        }
         PosProduct::create($data);
 
         return back()->with('success', 'Producto creado.');
@@ -117,10 +180,18 @@ class PosController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'sku' => ['nullable', 'string', 'max:40'],
             'price' => ['required', 'numeric', 'min:0'],
+            'iva_porcentaje' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'aplicar_iva' => ['boolean'],
+            'costo' => ['nullable', 'numeric', 'min:0'],
+            'piezas_caja' => ['nullable', 'integer', 'min:1', 'max:999'],
+            'bodega' => ['nullable', 'numeric', 'min:0'],
+            'exhibicion' => ['nullable', 'numeric', 'min:0'],
             'is_active' => ['boolean'],
         ]);
 
         $data['is_active'] = $request->boolean('is_active');
+        $data['aplicar_iva'] = $request->boolean('aplicar_iva');
+        $data['iva_porcentaje'] = $data['iva_porcentaje'] ?? $posProduct->iva_porcentaje;
         $posProduct->update($data);
 
         return back()->with('success', 'Producto actualizado.');

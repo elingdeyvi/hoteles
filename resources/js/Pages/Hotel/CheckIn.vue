@@ -11,11 +11,17 @@ const submit = () => form.post(route('reservas.check-in.store', props.reservatio
 <template>
     <Head title="Check-in" />
     <AuthenticatedLayout>
-        <template #header>Check-in {{ reservation.folio }}</template>
+        <template #header>Entrada {{ reservation.folio }}</template>
         <div class="card">
             <div class="card-body">
                 <p><strong>{{ reservation.huesped?.nombre }}</strong> · {{ reservation.room_type?.name }}</p>
-                <p>{{ day(reservation.check_in) }} → {{ day(reservation.check_out) }} · {{ reservation.guests_count }} huéspedes</p>
+                <p>
+                    {{ day(reservation.check_in) }}
+                    <template v-if="reservation.modalidad === 'horas'"> · {{ reservation.horas }} horas</template>
+                    <template v-else> → {{ day(reservation.check_out) }}</template>
+                    · {{ reservation.guests_count }} huéspedes
+                    <template v-if="Number(reservation.personas_extra) > 0"> · {{ reservation.personas_extra }} extra</template>
+                </p>
                 <form class="row g-3" @submit.prevent="submit">
                     <div class="col-md-4">
                         <label class="form-label">Habitación disponible</label>
@@ -24,7 +30,7 @@ const submit = () => form.post(route('reservas.check-in.store', props.reservatio
                         </select>
                     </div>
                     <div class="col-12">
-                        <button class="btn btn-success" :disabled="form.processing || !availableRooms.length">Registrar check-in</button>
+                        <button class="btn btn-success" :disabled="form.processing || !availableRooms.length">Registrar entrada</button>
                         <p v-if="!availableRooms.length" class="text-danger mt-2">No hay habitaciones disponibles de este tipo.</p>
                     </div>
                 </form>

@@ -9,15 +9,27 @@ class Huesped extends Model
 {
     protected $table = 'huespedes';
 
+    protected $appends = ['identificacion_url'];
+
     protected $fillable = [
         'nombre',
         'email',
         'telefono',
         'documento',
+        'identificacion_path',
         'nacionalidad',
         'direccion',
         'notas',
     ];
+
+    public function getIdentificacionUrlAttribute(): ?string
+    {
+        if (! $this->identificacion_path) {
+            return null;
+        }
+
+        return asset('storage/'.$this->identificacion_path);
+    }
 
     public function reservations(): HasMany
     {

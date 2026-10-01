@@ -52,13 +52,20 @@ const fechaHotel = (dias = 0) => {
     return new Date(Date.UTC(anio, mes - 1, dia + dias)).toISOString().slice(0, 10);
 };
 
+const editingId = ref(null);
 const form = useForm({
     huesped_id: '',
     room_type_id: '',
     room_id: '',
     check_in: fechaHotel(0),
     check_out: fechaHotel(1),
+    modalidad: 'noche',
+    hora_entrada: '15:00',
+    hora_salida: '12:00',
+    horas: 3,
     guests_count: 1,
+    personas_extra: 0,
+    requiere_factura: false,
     notes: '',
 });
 
@@ -98,16 +105,27 @@ const search = () => {
     }, { preserveState: true, preserveScroll: true, replace: true });
 };
 
+const diaSiguiente = (fecha) => {
+    const [y, m, d] = String(fecha).split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+};
+
 let consultTimer = null;
 const consult = () => {
-    if (!form.check_in || !form.check_out || form.check_out <= form.check_in) return;
+    if (!form.check_in) return;
+    const salida = form.modalidad === 'horas' ? diaSiguiente(form.check_in) : form.check_out;
+    if (!salida || (form.modalidad !== 'horas' && salida <= form.check_in)) return;
     router.get(route('reservas.index'), {
         status: localFilters.value.status || undefined,
         source: localFilters.value.source || undefined,
         from: localFilters.value.from || undefined,
         to: localFilters.value.to || undefined,
         avail_in: form.check_in,
-        avail_out: form.check_out,
+        avail_out: salida,
+        modalidad: form.modalidad,
+        horas: form.horas,
+        personas_extra: form.personas_extra,
+        exclude: editingId.value || undefined,
     }, {
         only: ['availability'],
         preserveState: true,
@@ -116,7 +134,7 @@ const consult = () => {
     });
 };
 
-watch(() => [form.check_in, form.check_out], () => {
+watch(() => [form.check_in, form.check_out, form.modalidad, form.horas, form.personas_extra, form.room_type_id], () => {
     clearTimeout(consultTimer);
     consultTimer = setTimeout(consult, 250);
 });
@@ -128,9 +146,16 @@ watch(selectableRooms, (rooms) => {
 });
 
 const openCreate = (opts = {}) => {
+    editingId.value = null;
     form.reset();
     form.clearErrors();
+    form.modalidad = 'noche';
+    form.hora_entrada = '15:00';
+    form.hora_salida = '12:00';
+    form.horas = 3;
     form.guests_count = 1;
+    form.personas_extra = 0;
+    form.requiere_factura = false;
     form.check_in = opts.check_in || fechaHotel(0);
     form.check_out = opts.check_out || fechaHotel(1);
     if (form.check_out <= form.check_in) {
@@ -148,13 +173,38 @@ if (props.filters?.create) {
     });
 }
 
+const horaCorta = (valor) => (valor ? String(valor).slice(0, 5) : '');
+
+const openEdit = (item) => {
+    editingId.value = item.id;
+    form.clearErrors();
+    form.huesped_id = item.huesped_id;
+    form.room_type_id = item.room_type_id;
+    form.room_id = item.room_id || '';
+    form.check_in = day(item.check_in);
+    form.check_out = item.modalidad === 'horas' ? diaSiguiente(item.check_in) : day(item.check_out);
+    form.modalidad = item.modalidad || 'noche';
+    form.hora_entrada = horaCorta(item.hora_entrada) || '15:00';
+    form.hora_salida = horaCorta(item.hora_salida) || '12:00';
+    form.horas = item.horas || 3;
+    form.guests_count = item.guests_count || 1;
+    form.personas_extra = item.personas_extra || 0;
+    form.requiere_factura = !!item.requiere_factura;
+    form.notes = item.notes || '';
+    showModal.value = true;
+    consult();
+};
+
 const submit = () => {
+    const url = editingId.value ? route('reservas.update', editingId.value) : route('reservas.store');
     form.transform((data) => ({
         ...data,
         room_id: data.room_id || null,
         huesped_id: data.huesped_id || null,
         room_type_id: data.room_type_id || null,
-    })).post(route('reservas.store'), {
+        check_out: data.modalidad === 'horas' ? data.check_in : data.check_out,
+        ...(editingId.value ? { _method: 'put' } : {}),
+    })).post(url, {
         preserveScroll: true,
         onSuccess: () => {
             showModal.value = false;
@@ -217,16 +267,24 @@ const onHuespedCreated = (guest) => {
                             <td>{{ item.huesped?.nombre }}</td>
                             <td>{{ item.room_type?.name }}</td>
                             <td>{{ item.room?.number || '—' }}</td>
-                            <td>{{ day(item.check_in) }}</td>
-                            <td>{{ day(item.check_out) }}</td>
+                            <td>{{ day(item.check_in) }} <small v-if="item.hora_entrada" class="text-muted">{{ String(item.hora_entrada).slice(0, 5) }}</small></td>
+                            <td>
+                                <template v-if="item.modalidad === 'horas'">{{ item.horas }} h</template>
+                                <template v-else>{{ day(item.check_out) }}</template>
+                                <small v-if="item.hora_salida" class="text-muted"> {{ String(item.hora_salida).slice(0, 5) }}</small>
+                            </td>
                             <td><span class="badge text-bg-secondary">{{ labels[item.status] || item.status }}</span></td>
-                            <td>{{ money(item.estimated_total) }}</td>
+                            <td>
+                                {{ money(item.estimated_total) }}
+                                <span v-if="item.requiere_factura" class="badge text-bg-info ms-1">Factura</span>
+                            </td>
                             <td class="text-nowrap">
+                                <button v-if="['confirmada','pendiente'].includes(item.status)" type="button" class="btn btn-sm btn-outline-primary" @click="openEdit(item)">Editar</button>
                                 <button type="button" class="btn btn-sm btn-outline-dark" @click="ticketRef?.solicitar(route('reservas.imprimir', item.id), 'Reservación')">Imprimir</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" @click="compartir(item)">Compartir</button>
-                                <Link v-if="['confirmada','pendiente'].includes(item.status)" :href="route('reservas.check-in', item.id)" class="btn btn-sm btn-success">Check-in</Link>
+                                <Link v-if="['confirmada','pendiente'].includes(item.status)" :href="route('reservas.check-in', item.id)" class="btn btn-sm btn-success">Entrada</Link>
                                 <Link v-if="item.status === 'pendiente'" :href="route('reservas.confirm', item.id)" method="post" as="button" class="btn btn-sm btn-outline-primary">Confirmar</Link>
-                                <Link v-if="item.status === 'check_in'" :href="route('reservas.check-out', item.id)" method="post" as="button" class="btn btn-sm btn-warning">Check-out</Link>
+                                <Link v-if="item.status === 'check_in'" :href="route('reservas.check-out', item.id)" method="post" as="button" class="btn btn-sm btn-warning">Salida</Link>
                                 <Link v-if="!['check_in','cancelada','check_out'].includes(item.status)" :href="route('reservas.cancel', item.id)" method="post" as="button" class="btn btn-sm btn-outline-danger">Cancelar</Link>
                             </td>
                         </tr>
@@ -240,7 +298,7 @@ const onHuespedCreated = (guest) => {
                 <div class="modal-dialog modal-lg modal-dialog-scrollable">
                     <form class="modal-content" @submit.prevent="submit">
                         <div class="modal-header">
-                            <h5 class="modal-title">Nueva reserva</h5>
+                            <h5 class="modal-title">{{ editingId ? 'Editar reserva' : 'Nueva reserva' }}</h5>
                             <button type="button" class="btn-close" @click="showModal = false"></button>
                         </div>
                         <div class="modal-body row g-3">
@@ -275,17 +333,40 @@ const onHuespedCreated = (guest) => {
                                     <option v-for="type in roomTypes" :key="type.id" :value="type.id">{{ type.name }}</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Modalidad</label>
+                                <select v-model="form.modalidad" class="form-select">
+                                    <option value="noche">Por noche</option>
+                                    <option value="horas">Por horas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label">Entrada</label>
                                 <input v-model="form.check_in" type="date" class="form-control" :class="{ 'is-invalid': form.errors.check_in }" required />
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4" v-if="form.modalidad !== 'horas'">
                                 <label class="form-label">Salida</label>
                                 <input v-model="form.check_out" type="date" class="form-control" :class="{ 'is-invalid': form.errors.check_out }" required />
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-4" v-else>
+                                <label class="form-label">Horas</label>
+                                <input v-model="form.horas" type="number" min="1" max="24" class="form-control" :class="{ 'is-invalid': form.errors.horas }" required />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Hora de entrada</label>
+                                <input v-model="form.hora_entrada" type="time" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Hora de salida</label>
+                                <input v-model="form.hora_salida" type="time" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
                                 <label class="form-label">Huéspedes</label>
                                 <input v-model="form.guests_count" type="number" min="1" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Personas extra</label>
+                                <input v-model="form.personas_extra" type="number" min="0" class="form-control" />
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Habitación</label>
@@ -297,8 +378,9 @@ const onHuespedCreated = (guest) => {
                             <div class="col-12" v-if="quote">
                                 <div class="alert mb-0" :class="quote.available_rooms ? 'alert-info' : 'alert-warning'">
                                     {{ quote.room_type.name }}: {{ quote.available_rooms }} disponibles ·
-                                    {{ money(quote.nightly_rate) }} por noche ·
-                                    total {{ money(quote.estimated_total) }}
+                                    {{ money(quote.nightly_rate) }} {{ form.modalidad === 'horas' ? 'por hora' : 'por noche' }}
+                                    <span v-if="Number(quote.monto_extra) > 0"> · extra {{ money(quote.monto_extra) }}</span>
+                                    · total {{ money(quote.estimated_total) }}
                                 </div>
                             </div>
                             <div class="col-12" v-else-if="form.check_in && form.check_out && form.check_out > form.check_in && availability">
@@ -308,6 +390,13 @@ const onHuespedCreated = (guest) => {
                                         <span>{{ row.available_rooms }} disp. · {{ money(row.estimated_total) }}</span>
                                     </li>
                                 </ul>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input id="factura" v-model="form.requiere_factura" class="form-check-input" type="checkbox" />
+                                    <label class="form-check-label" for="factura">Pide factura</label>
+                                </div>
+                                <div class="form-text">Queda marcada en la reserva. El timbrado ante el SAT se hace aparte, con certificados y un PAC.</div>
                             </div>
                             <div class="col-12"><label class="form-label">Notas</label><textarea v-model="form.notes" class="form-control" rows="2"></textarea></div>
                         </div>

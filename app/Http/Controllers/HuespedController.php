@@ -35,9 +35,12 @@ class HuespedController extends Controller
 
     public function store(Request $request): JsonResponse|RedirectResponse
     {
-        $huesped = Huesped::create($this->validated($request));
+        $data = $this->validated($request);
+        $this->guardarIdentificacion($request, $data);
+        $huesped = Huesped::create($data);
 
-        if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+        // Inertia también manda X-Requested-With; el JSON es solo para el alta rápida (axios).
+        if (! $request->header('X-Inertia') && ($request->expectsJson() || $request->wantsJson())) {
             return response()->json([
                 'data' => $huesped->only(['id', 'nombre', 'email', 'telefono', 'documento']),
                 'message' => 'Huésped registrado.',
@@ -49,7 +52,9 @@ class HuespedController extends Controller
 
     public function update(Request $request, Huesped $huesped): RedirectResponse
     {
-        $huesped->update($this->validated($request));
+        $data = $this->validated($request);
+        $this->guardarIdentificacion($request, $data);
+        $huesped->update($data);
 
         return back()->with('success', 'Huésped actualizado.');
     }
@@ -68,9 +73,22 @@ class HuespedController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'telefono' => ['nullable', 'string', 'max:50'],
             'documento' => ['nullable', 'string', 'max:80'],
+            'identificacion' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
             'nacionalidad' => ['nullable', 'string', 'max:80'],
             'direccion' => ['nullable', 'string'],
             'notas' => ['nullable', 'string'],
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function guardarIdentificacion(Request $request, array &$data): void
+    {
+        if (! $request->hasFile('identificacion')) {
+            return;
+        }
+
+        $data['identificacion_path'] = $request->file('identificacion')->store('identificaciones', 'public');
     }
 }

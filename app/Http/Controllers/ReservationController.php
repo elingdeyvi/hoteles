@@ -48,18 +48,25 @@ class ReservationController extends Controller
 
         $availability = null;
         if ($request->filled('avail_in') && $request->filled('avail_out')) {
-            $checkIn = Carbon::parse($request->get('avail_in'));
-            $checkOut = Carbon::parse($request->get('avail_out'));
+            $checkIn = Carbon::parse($request->get('avail_in'))->startOfDay();
+            $checkOut = Carbon::parse($request->get('avail_out'))->startOfDay();
+            $modalidad = $request->get('modalidad') === 'horas' ? 'horas' : 'noche';
+            $horas = max(1, (int) $request->get('horas', 1));
+            $personasExtra = max(0, (int) $request->get('personas_extra', 0));
+            $exclude = $request->filled('exclude') ? (int) $request->get('exclude') : null;
             if ($checkOut->gt($checkIn)) {
-                $availability = RoomType::query()->where('is_active', true)->orderBy('name')->get()->map(function (RoomType $type) use ($checkIn, $checkOut) {
-                    $free = $this->reservations->availableRooms($type, $checkIn, $checkOut);
+                $availability = RoomType::query()->where('is_active', true)->orderBy('name')->get()->map(function (RoomType $type) use ($checkIn, $checkOut, $modalidad, $horas, $personasExtra, $exclude) {
+                    $free = $this->reservations->availableRooms($type, $checkIn, $checkOut, $exclude);
+                    $cotizacion = $this->pricing->cotizar($type, $checkIn, $checkOut, $modalidad, $horas, $personasExtra);
 
                     return [
-                        'room_type' => $type->only(['id', 'name', 'base_price', 'capacity']),
+                        'room_type' => $type->only(['id', 'name', 'base_price', 'capacity', 'hourly_price', 'extra_person_price']),
                         'available_rooms' => $free->count(),
                         'room_ids' => $free->pluck('id')->values(),
-                        'estimated_total' => $this->pricing->estimateStayTotal($type, $checkIn, $checkOut),
-                        'nightly_rate' => $this->pricing->priceForNight($type, $checkIn),
+                        'estimated_total' => $cotizacion['total'],
+                        'nightly_rate' => $cotizacion['tarifa'],
+                        'monto_extra' => $cotizacion['extra'],
+                        'modalidad' => $modalidad,
                     ];
                 });
             }
@@ -68,7 +75,7 @@ class ReservationController extends Controller
         return Inertia::render('Hotel/Reservations/Index', [
             'reservations' => $query->paginate(20)->withQueryString(),
             'huespedes' => Huesped::query()->orderBy('nombre')->get(['id', 'nombre', 'email']),
-            'roomTypes' => RoomType::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'base_price']),
+            'roomTypes' => RoomType::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'base_price', 'hourly_price', 'extra_person_price']),
             'rooms' => Room::query()->where('is_active', true)->orderBy('number')->get(['id', 'number', 'room_type_id', 'status']),
             'filters' => $request->only(['status', 'source', 'from', 'to', 'avail_in', 'avail_out', 'create', 'check_in', 'check_out']),
             'availability' => $availability,
@@ -77,40 +84,14 @@ class ReservationController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'huesped_id' => ['required', 'exists:huespedes,id'],
-            'room_type_id' => ['required', 'exists:room_types,id'],
-            'room_id' => ['nullable', 'exists:rooms,id'],
-            'check_in' => ['required', 'date'],
-            'check_out' => ['required', 'date', 'after:check_in'],
-            'guests_count' => ['nullable', 'integer', 'min:1', 'max:20'],
-            'notes' => ['nullable', 'string'],
-        ]);
-
-        $checkIn = Carbon::parse($data['check_in']);
-        $checkOut = Carbon::parse($data['check_out']);
-        $roomType = RoomType::findOrFail($data['room_type_id']);
-
-        if (! empty($data['room_id'])) {
-            $room = Room::findOrFail($data['room_id']);
-            if (! $this->reservations->isRoomAvailable($room, $checkIn, $checkOut)) {
-                throw ValidationException::withMessages([
-                    'room_id' => 'La habitación no está disponible en esas fechas.',
-                ]);
-            }
-        } elseif ($this->reservations->availableRoomsCount($roomType, $checkIn, $checkOut) < 1) {
-            throw ValidationException::withMessages([
-                'room_type_id' => 'No hay habitaciones disponibles de ese tipo en esas fechas.',
-            ]);
-        }
+        $data = $this->datosReserva($request);
+        $this->asegurarDisponibilidad($data);
 
         Reservation::create([
             ...$data,
-            'guests_count' => $data['guests_count'] ?? 1,
             'folio' => $this->reservations->generateFolio(),
             'source' => 'recepcion',
             'status' => 'confirmada',
-            'estimated_total' => $this->pricing->estimateStayTotal($roomType, $checkIn, $checkOut),
             'created_by' => $request->user()->id,
         ]);
 
@@ -119,25 +100,16 @@ class ReservationController extends Controller
 
     public function update(Request $request, Reservation $reservation): RedirectResponse
     {
-        $data = $request->validate([
-            'room_id' => ['nullable', 'exists:rooms,id'],
-            'check_in' => ['required', 'date'],
-            'check_out' => ['required', 'date', 'after:check_in'],
-            'guests_count' => ['nullable', 'integer', 'min:1', 'max:20'],
-            'notes' => ['nullable', 'string'],
-        ]);
-
-        $reservation->update($data);
-
-        if ($reservation->roomType) {
-            $reservation->update([
-                'estimated_total' => $this->pricing->estimateStayTotal(
-                    $reservation->roomType,
-                    Carbon::parse($reservation->check_in),
-                    Carbon::parse($reservation->check_out)
-                ),
-            ]);
+        if (in_array($reservation->status, ['check_in', 'check_out', 'cancelada'], true)) {
+            return back()->with('error', 'Esta reserva ya no se puede editar.');
         }
+
+        $data = $this->datosReserva($request, false);
+        if (empty($data['huesped_id'])) {
+            unset($data['huesped_id']);
+        }
+        $this->asegurarDisponibilidad($data, $reservation->id);
+        $reservation->update($data);
 
         return back()->with('success', 'Reserva actualizada.');
     }
@@ -162,5 +134,110 @@ class ReservationController extends Controller
         }
 
         return back()->with('success', 'Reserva confirmada.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function datosReserva(Request $request, bool $requiereHuesped = true): array
+    {
+        $rules = [
+            'room_type_id' => ['required', 'exists:room_types,id'],
+            'room_id' => ['nullable', 'exists:rooms,id'],
+            'check_in' => ['required', 'date'],
+            'check_out' => ['required', 'date'],
+            'modalidad' => ['required', 'in:noche,horas'],
+            'hora_entrada' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'hora_salida' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'horas' => ['nullable', 'integer', 'min:1', 'max:24'],
+            'guests_count' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'personas_extra' => ['nullable', 'integer', 'min:0', 'max:10'],
+            'notes' => ['nullable', 'string'],
+            'requiere_factura' => ['nullable', 'boolean'],
+        ];
+
+        if ($requiereHuesped) {
+            $rules['huesped_id'] = ['required', 'exists:huespedes,id'];
+        } else {
+            $rules['huesped_id'] = ['nullable', 'exists:huespedes,id'];
+        }
+
+        $data = $request->validate($rules);
+        $modalidad = $data['modalidad'];
+        $checkIn = Carbon::parse($data['check_in'])->startOfDay();
+        $checkOut = Carbon::parse($data['check_out'])->startOfDay();
+
+        if ($modalidad === 'horas') {
+            if (empty($data['horas'])) {
+                throw ValidationException::withMessages([
+                    'horas' => 'Indica cuántas horas dura la estancia.',
+                ]);
+            }
+            $checkOut = $checkIn->copy();
+        } elseif (! $checkOut->gt($checkIn)) {
+            throw ValidationException::withMessages([
+                'check_out' => 'La salida debe ser posterior a la entrada.',
+            ]);
+        }
+
+        $roomType = RoomType::findOrFail($data['room_type_id']);
+        $personasExtra = (int) ($data['personas_extra'] ?? 0);
+        $horas = (int) ($data['horas'] ?? 1);
+        $finCotizacion = $modalidad === 'horas' ? $checkIn->copy()->addDay() : $checkOut;
+        $cotizacion = $this->pricing->cotizar($roomType, $checkIn, $finCotizacion, $modalidad, $horas, $personasExtra);
+
+        return [
+            'huesped_id' => $data['huesped_id'] ?? null,
+            'room_type_id' => $data['room_type_id'],
+            'room_id' => $data['room_id'] ?: null,
+            'check_in' => $checkIn->toDateString(),
+            'check_out' => $checkOut->toDateString(),
+            'modalidad' => $modalidad,
+            'hora_entrada' => $this->hora($data['hora_entrada'] ?? null),
+            'hora_salida' => $this->hora($data['hora_salida'] ?? null),
+            'horas' => $modalidad === 'horas' ? $horas : null,
+            'guests_count' => $data['guests_count'] ?? 1,
+            'personas_extra' => $personasExtra,
+            'tarifa_persona_extra' => $cotizacion['tarifa_persona_extra'],
+            'estimated_total' => $cotizacion['total'],
+            'monto_hospedaje' => $cotizacion['hospedaje'],
+            'monto_extra' => $cotizacion['extra'],
+            'notes' => $data['notes'] ?? null,
+            'requiere_factura' => $request->boolean('requiere_factura'),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function asegurarDisponibilidad(array $data, ?int $excludeId = null): void
+    {
+        $checkIn = Carbon::parse($data['check_in']);
+        $checkOut = $data['modalidad'] === 'horas'
+            ? $checkIn->copy()->addDay()
+            : Carbon::parse($data['check_out']);
+        $roomType = RoomType::findOrFail($data['room_type_id']);
+
+        if (! empty($data['room_id'])) {
+            $room = Room::findOrFail($data['room_id']);
+            if (! $this->reservations->isRoomAvailable($room, $checkIn, $checkOut, $excludeId)) {
+                throw ValidationException::withMessages([
+                    'room_id' => 'La habitación no está disponible en esas fechas.',
+                ]);
+            }
+        } elseif ($this->reservations->availableRooms($roomType, $checkIn, $checkOut, $excludeId)->count() < 1) {
+            throw ValidationException::withMessages([
+                'room_type_id' => 'No hay habitaciones disponibles de ese tipo en esas fechas.',
+            ]);
+        }
+    }
+
+    private function hora(?string $valor): ?string
+    {
+        if (! $valor) {
+            return null;
+        }
+
+        return substr($valor, 0, 5);
     }
 }

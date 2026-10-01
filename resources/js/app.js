@@ -1,5 +1,6 @@
 import '../css/app.css';
 import './bootstrap';
+import './sesionAviso';
 
 import 'bootstrap';
 import 'admin-lte';

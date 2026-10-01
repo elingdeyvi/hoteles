@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\ConfiguracionEmpresa;
+use App\Models\CorteCaja;
 use App\Models\Folio;
 use App\Models\Impresora;
+use App\Models\PosVenta;
 use App\Models\PrintAgentToken;
 use App\Models\PrintJob;
 use App\Models\Reservation;
@@ -158,6 +160,46 @@ class ImpresionController extends Controller
             request()->user(),
             null,
             $folio->id,
+        ));
+    }
+
+    public function imprimirVenta(PosVenta $venta): JsonResponse
+    {
+        $venta->load('lineas');
+        $impresora = $this->impresora();
+        $columnas = $impresora?->destino()->columnas() ?? 42;
+        $contenido = $this->tickets->ventaPublica($venta, $this->empresa(), $columnas);
+
+        if (! $impresora) {
+            return response()->json($this->sinImpresora($contenido));
+        }
+
+        return response()->json($this->jobs->despachar(
+            'venta',
+            $contenido,
+            $impresora,
+            request()->user(),
+        ));
+    }
+
+    public function imprimirCorte(CorteCaja $corte): JsonResponse
+    {
+        $corte->load('usuario', 'caja');
+        abort_unless((int) $corte->caja?->property_id === (int) CurrentProperty::id(), 404);
+
+        $impresora = $this->impresora();
+        $columnas = $impresora?->destino()->columnas() ?? 42;
+        $contenido = $this->tickets->corte($corte, $this->empresa(), $columnas);
+
+        if (! $impresora) {
+            return response()->json($this->sinImpresora($contenido));
+        }
+
+        return response()->json($this->jobs->despachar(
+            'corte',
+            $contenido,
+            $impresora,
+            request()->user(),
         ));
     }
 

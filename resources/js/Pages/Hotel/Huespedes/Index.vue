@@ -6,14 +6,19 @@ import { ref } from 'vue';
 const props = defineProps({ huespedes: Object, filters: Object });
 const showModal = ref(false);
 const editing = ref(null);
-const form = useForm({ nombre: '', email: '', telefono: '', documento: '', nacionalidad: '', direccion: '', notas: '' });
+const form = useForm({ nombre: '', email: '', telefono: '', documento: '', identificacion: null, nacionalidad: '', direccion: '', notas: '' });
 
 const openCreate = () => { editing.value = null; form.reset(); showModal.value = true; };
-const openEdit = (guest) => { editing.value = guest; form.nombre = guest.nombre; form.email = guest.email; form.telefono = guest.telefono; form.documento = guest.documento; form.nacionalidad = guest.nacionalidad; form.direccion = guest.direccion; form.notas = guest.notas; showModal.value = true; };
+const openEdit = (guest) => { editing.value = guest; form.nombre = guest.nombre; form.email = guest.email; form.telefono = guest.telefono; form.documento = guest.documento; form.identificacion = null; form.nacionalidad = guest.nacionalidad; form.direccion = guest.direccion; form.notas = guest.notas; showModal.value = true; };
+const archivo = (event) => { form.identificacion = event.target.files?.[0] || null; };
 const submit = () => {
     const done = () => { showModal.value = false; };
-    if (editing.value) form.put(route('huespedes.update', editing.value.id), { onSuccess: done });
-    else form.post(route('huespedes.store'), { onSuccess: done });
+    const opciones = { forceFormData: true, onSuccess: done };
+    if (editing.value) {
+        form.transform((data) => ({ ...data, _method: 'put' })).post(route('huespedes.update', editing.value.id), opciones);
+    } else {
+        form.post(route('huespedes.store'), opciones);
+    }
 };
 const search = () => router.get(route('huespedes.index'), { q: props.filters.q || undefined }, { preserveState: true, replace: true });
 const eliminar = (guest) => {
@@ -34,10 +39,11 @@ const eliminar = (guest) => {
         </div>
         <div class="card"><div class="card-body p-0 table-responsive">
             <table class="table table-hover mb-0">
-                <thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Documento</th><th></th></tr></thead>
+                <thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Documento</th><th>Identificación</th><th></th></tr></thead>
                 <tbody>
                     <tr v-for="guest in huespedes.data" :key="guest.id">
                         <td>{{ guest.nombre }}</td><td>{{ guest.email }}</td><td>{{ guest.telefono }}</td><td>{{ guest.documento }}</td>
+                        <td><a v-if="guest.identificacion_url" :href="guest.identificacion_url" target="_blank" rel="noopener">Ver</a><span v-else class="text-muted">—</span></td>
                         <td class="text-nowrap">
                             <button class="btn btn-sm btn-outline-primary" @click="openEdit(guest)">Editar</button>
                             <button class="btn btn-sm btn-outline-danger" @click="eliminar(guest)">Eliminar</button>
@@ -54,6 +60,11 @@ const eliminar = (guest) => {
                     <div class="col-md-6"><input v-model="form.email" type="email" class="form-control" placeholder="Correo" /></div>
                     <div class="col-md-6"><input v-model="form.telefono" class="form-control" placeholder="Teléfono" /></div>
                     <div class="col-md-6"><input v-model="form.documento" class="form-control" placeholder="Documento" /></div>
+                    <div class="col-12">
+                        <label class="form-label">Identificación (foto o PDF)</label>
+                        <input type="file" class="form-control" accept="image/*,.pdf" @change="archivo" />
+                        <a v-if="editing?.identificacion_url" :href="editing.identificacion_url" target="_blank" rel="noopener" class="form-text">Ver archivo actual</a>
+                    </div>
                     <div class="col-md-6"><input v-model="form.nacionalidad" class="form-control" placeholder="Nacionalidad" /></div>
                     <div class="col-12"><textarea v-model="form.notas" class="form-control" placeholder="Notas" rows="2"></textarea></div>
                 </div>

@@ -71,7 +71,19 @@ class CheckInOutController extends Controller
         ]);
 
         $room->update(['status' => 'ocupada']);
-        $folio = $this->folios->createForStay($stay, (float) $reservation->estimated_total);
+        $hospedaje = $reservation->monto_hospedaje !== null
+            ? (float) $reservation->monto_hospedaje
+            : (float) $reservation->estimated_total;
+        $folio = $this->folios->createForStay($stay, $hospedaje);
+        $extra = (float) $reservation->monto_extra;
+        if ($extra > 0) {
+            $this->folios->addCharge(
+                $folio,
+                'Persona extra × '.(int) $reservation->personas_extra,
+                $extra,
+                'extra'
+            );
+        }
 
         return redirect()->route('folios.show', $folio)->with('success', 'Check-in registrado. Folio abierto.');
     }

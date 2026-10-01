@@ -7,11 +7,30 @@ use App\Models\Caja;
 use App\Models\CorteCaja;
 use App\Models\FolioCharge;
 use App\Models\FolioPayment;
+use App\Models\MovimientoCaja;
+use App\Models\PosVenta;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class CajaService
 {
+    /** @var array<string, float> */
+    public const DENOMINACIONES = [
+        'b1000' => 1000,
+        'b500' => 500,
+        'b200' => 200,
+        'b100' => 100,
+        'b50' => 50,
+        'b20' => 20,
+        'm20' => 20,
+        'm10' => 10,
+        'm5' => 5,
+        'm2' => 2,
+        'm1' => 1,
+        'c50' => 0.5,
+        'c20' => 0.2,
+        'c10' => 0.1,
+    ];
     public function cajaActiva(): Caja
     {
         $caja = Caja::query()->where('activo', true)->orderBy('id')->first();
@@ -82,20 +101,40 @@ class CajaService
             ->where('apertura_caja_id', $apertura->id)
             ->get(['payment_method', 'amount']);
 
+        $ventas = PosVenta::query()
+            ->where('apertura_caja_id', $apertura->id)
+            ->get(['payment_method', 'total']);
+
         $efectivo = 0.0;
         $tarjeta = 0.0;
         $transferencia = 0.0;
         $otros = 0.0;
 
-        foreach ($pagos as $pago) {
-            $monto = (float) $pago->amount;
-            match ($pago->payment_method) {
+        $sumar = function (string $metodo, float $monto) use (&$efectivo, &$tarjeta, &$transferencia, &$otros): void {
+            match ($metodo) {
                 'efectivo' => $efectivo += $monto,
                 'tarjeta' => $tarjeta += $monto,
                 'transferencia' => $transferencia += $monto,
                 default => $otros += $monto,
             };
+        };
+
+        foreach ($pagos as $pago) {
+            $sumar((string) $pago->payment_method, (float) $pago->amount);
         }
+        foreach ($ventas as $venta) {
+            $sumar((string) $venta->payment_method, (float) $venta->total);
+            $consumos += (float) $venta->total;
+        }
+
+        $ingresos = (float) MovimientoCaja::query()
+            ->where('apertura_caja_id', $apertura->id)
+            ->where('tipo', 'ingreso')
+            ->sum('monto');
+        $egresos = (float) MovimientoCaja::query()
+            ->where('apertura_caja_id', $apertura->id)
+            ->where('tipo', 'egreso')
+            ->sum('monto');
 
         $fondo = (float) $apertura->fondo_inicial;
 
@@ -107,8 +146,23 @@ class CajaService
             'total_transferencia' => round($transferencia, 2),
             'total_otros' => round($otros, 2),
             'total_cobros' => round($efectivo + $tarjeta + $transferencia + $otros, 2),
-            'total_esperado' => round($fondo + $efectivo, 2),
+            'total_ingresos' => round($ingresos, 2),
+            'total_egresos' => round($egresos, 2),
+            'total_esperado' => round($fondo + $efectivo + $ingresos - $egresos, 2),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $conteo
+     */
+    public function efectivoContado(array $conteo): float
+    {
+        $total = 0.0;
+        foreach (self::DENOMINACIONES as $clave => $valor) {
+            $total += max(0, (int) ($conteo[$clave] ?? 0)) * $valor;
+        }
+
+        return round($total, 2);
     }
 
     public function sincronizar(AperturaCaja $apertura): AperturaCaja
@@ -118,7 +172,7 @@ class CajaService
         return $apertura->fresh(['usuario', 'caja']);
     }
 
-    public function cortar(AperturaCaja $apertura, string $tipo, ?float $totalReal, ?string $observaciones, int $userId): CorteCaja
+    public function cortar(AperturaCaja $apertura, string $tipo, ?float $totalReal, ?string $observaciones, int $userId, ?array $conteo = null): CorteCaja
     {
         if ($apertura->cerrada) {
             throw ValidationException::withMessages(['tipo' => ['La caja ya está cerrada.']]);
@@ -130,7 +184,7 @@ class CajaService
             ]);
         }
 
-        return DB::transaction(function () use ($apertura, $tipo, $totalReal, $observaciones, $userId) {
+        return DB::transaction(function () use ($apertura, $tipo, $totalReal, $observaciones, $userId, $conteo) {
             $totales = $this->totales($apertura);
             $apertura->update($totales);
 
@@ -146,6 +200,7 @@ class CajaService
                 'total_real' => $totalReal,
                 'diferencia' => $diferencia,
                 'observaciones' => $observaciones,
+                'conteo' => $conteo,
             ]);
 
             if ($tipo === CorteCaja::TIPO_Z) {

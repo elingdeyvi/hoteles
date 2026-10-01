@@ -4,17 +4,26 @@ namespace App\Http\Controllers;
 
 use App\Models\Folio;
 use App\Models\FolioCharge;
+use App\Models\FolioPayment;
 use App\Models\Reservation;
 use App\Models\Room;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(): Response
+    public function __invoke(Request $request): Response
     {
         $today = now()->toDateString();
+        $from = Carbon::parse($request->input('from', now()->startOfMonth()->toDateString()))->startOfDay();
+        $to = Carbon::parse($request->input('to', $today))->endOfDay();
+        if ($from->greaterThan($to)) {
+            [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
+        }
 
         $arrivalsToday = Reservation::query()
             ->whereDate('check_in', $today)
@@ -75,7 +84,45 @@ class DashboardController extends Controller
             ->orderByDesc('total')
             ->get();
 
+        $arrivalsByDay = Reservation::query()
+            ->whereNotIn('status', ['cancelada'])
+            ->whereBetween('check_in', [$from->toDateString(), $to->toDateString()])
+            ->selectRaw('DATE(check_in) as day, count(*) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        $revenueByDay = FolioPayment::query()
+            ->whereHas('folio.stay.room')
+            ->whereBetween('created_at', [$from, $to])
+            ->selectRaw('DATE(created_at) as day, SUM(amount) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        $posByDay = FolioCharge::query()
+            ->where('charge_type', 'pos')
+            ->whereHas('posProduct.category.outlet')
+            ->whereBetween('created_at', [$from, $to])
+            ->selectRaw('DATE(created_at) as day, COALESCE(SUM(amount * quantity), 0) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        $series = [];
+        foreach (CarbonPeriod::create($from->toDateString(), $to->toDateString()) as $day) {
+            $key = $day->toDateString();
+            $series[] = [
+                'day' => $key,
+                'arrivals' => (int) ($arrivalsByDay[$key] ?? 0),
+                'revenue' => round((float) ($revenueByDay[$key] ?? 0), 2),
+                'pos' => round((float) ($posByDay[$key] ?? 0), 2),
+            ];
+        }
+
         return Inertia::render('Dashboard', [
+            'filters' => [
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
+            ],
+            'series' => $series,
             'summary' => [
                 'arrivals_today' => $arrivalsToday,
                 'departures_today' => $departuresToday,
@@ -90,6 +137,9 @@ class DashboardController extends Controller
                 'pos_sales_today' => $posToday,
                 'pos_sales_month' => $posMonth,
                 'pos_by_outlet_today' => $posByOutletToday,
+                'range_arrivals' => array_sum(array_column($series, 'arrivals')),
+                'range_revenue' => round(array_sum(array_column($series, 'revenue')), 2),
+                'range_pos' => round(array_sum(array_column($series, 'pos')), 2),
             ],
         ]);
     }

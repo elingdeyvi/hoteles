@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\ConfiguracionEmpresa;
+use App\Models\CorteCaja;
 use App\Models\Folio;
+use App\Models\PosVenta;
 use App\Models\Reservation;
 
 class HotelTicketText
@@ -69,8 +71,73 @@ class HotelTicketText
 
         $lineas[] = str_repeat('=', $columnas);
         $lineas[] = $this->fila('SALDO', $this->dinero($folio->balance), $columnas);
+        $cambio = (float) $folio->payments->sum('cambio');
+        if ($cambio > 0) {
+            $lineas[] = $this->fila('CAMBIO', $this->dinero($cambio), $columnas);
+        }
         $lineas[] = '';
         $lineas[] = $this->centrar('Gracias por su preferencia', $columnas);
+
+        return implode("\n", $lineas);
+    }
+
+    public function ventaPublica(PosVenta $venta, ?ConfiguracionEmpresa $empresa, int $columnas = 42): string
+    {
+        $venta->loadMissing('lineas');
+        $nombre = $empresa?->nombre_corto ?: $empresa?->nombre_empresa ?: 'Hotel';
+        $lineas = [
+            $this->centrar($nombre, $columnas),
+            $this->centrar('VENTA AL PUBLICO', $columnas),
+            str_repeat('-', $columnas),
+            'Ticket: '.$venta->numero,
+            'Pago: '.$venta->payment_method,
+            str_repeat('-', $columnas),
+        ];
+
+        foreach ($venta->lineas as $linea) {
+            $lineas[] = $this->fila(
+                $linea->cantidad.' '.$linea->nombre,
+                $this->dinero($linea->importe),
+                $columnas
+            );
+        }
+
+        $lineas[] = str_repeat('=', $columnas);
+        $lineas[] = $this->fila('TOTAL', $this->dinero($venta->total), $columnas);
+        if ((float) $venta->cambio > 0) {
+            $lineas[] = $this->fila('RECIBIDO', $this->dinero($venta->recibido), $columnas);
+            $lineas[] = $this->fila('CAMBIO', $this->dinero($venta->cambio), $columnas);
+        }
+        $lineas[] = '';
+        $lineas[] = $this->centrar('Gracias por su preferencia', $columnas);
+
+        return implode("\n", $lineas);
+    }
+
+    public function corte(CorteCaja $corte, ?ConfiguracionEmpresa $empresa, int $columnas = 42): string
+    {
+        $nombre = $empresa?->nombre_corto ?: $empresa?->nombre_empresa ?: 'Hotel';
+        $lineas = [
+            $this->centrar($nombre, $columnas),
+            $this->centrar('CORTE '.$corte->tipo, $columnas),
+            str_repeat('-', $columnas),
+            'Fecha: '.($corte->fecha_corte?->format('Y-m-d H:i') ?: ''),
+            'Usuario: '.$this->cortar((string) $corte->usuario?->name, $columnas - 9),
+            str_repeat('-', $columnas),
+            $this->fila('Fondo', $this->dinero($corte->fondo_inicial), $columnas),
+            $this->fila('Efectivo', $this->dinero($corte->total_efectivo), $columnas),
+            $this->fila('Tarjeta', $this->dinero($corte->total_tarjeta), $columnas),
+            $this->fila('Transfer.', $this->dinero($corte->total_transferencia), $columnas),
+            $this->fila('(+) Ingresos', $this->dinero($corte->total_ingresos), $columnas),
+            $this->fila('(-) Egresos', $this->dinero($corte->total_egresos), $columnas),
+            str_repeat('=', $columnas),
+            $this->fila('ESPERADO', $this->dinero($corte->total_esperado), $columnas),
+        ];
+
+        if ($corte->total_real !== null) {
+            $lineas[] = $this->fila('CONTADO', $this->dinero($corte->total_real), $columnas);
+            $lineas[] = $this->fila('DIFERENCIA', $this->dinero($corte->diferencia), $columnas);
+        }
 
         return implode("\n", $lineas);
     }

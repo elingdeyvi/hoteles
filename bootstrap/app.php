@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -30,5 +32,31 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // IONOS rechaza el estado 419 y lo convierte en 502 "Upstream server failed".
+        // Se contesta 422 para quedarse en la misma pantalla, con la cookie nueva.
+        $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
+            if ($response->getStatusCode() !== 419) {
+                return $response;
+            }
+
+            $mensaje = 'No se completó. Sigues en esta pantalla: vuelve a intentarlo.';
+
+            if ($request->header('X-Inertia')) {
+                $response->setStatusCode(422);
+                $response->headers->set('Content-Type', 'application/json');
+                $response->setContent(json_encode([
+                    'message' => $mensaje,
+                    'errors' => ['sesion' => [$mensaje]],
+                ], JSON_UNESCAPED_UNICODE));
+
+                return $response;
+            }
+
+            $redir = redirect()->back()->with('error', $mensaje);
+            foreach ($response->headers->getCookies() as $cookie) {
+                $redir->headers->setCookie($cookie);
+            }
+
+            return $redir;
+        });
     })->create();

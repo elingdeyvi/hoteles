@@ -22,6 +22,8 @@ class AperturaCaja extends Model
         'total_transferencia',
         'total_otros',
         'total_cobros',
+        'total_ingresos',
+        'total_egresos',
         'total_esperado',
         'total_real',
         'diferencia',
@@ -37,6 +39,8 @@ class AperturaCaja extends Model
         'total_transferencia' => 'decimal:2',
         'total_otros' => 'decimal:2',
         'total_cobros' => 'decimal:2',
+        'total_ingresos' => 'decimal:2',
+        'total_egresos' => 'decimal:2',
         'total_esperado' => 'decimal:2',
         'total_real' => 'decimal:2',
         'diferencia' => 'decimal:2',
@@ -68,5 +72,15 @@ class AperturaCaja extends Model
     public function cargos(): HasMany
     {
         return $this->hasMany(FolioCharge::class);
+    }
+
+    public function movimientos(): HasMany
+    {
+        return $this->hasMany(MovimientoCaja::class);
+    }
+
+    public function ventas(): HasMany
+    {
+        return $this->hasMany(PosVenta::class);
     }
 }

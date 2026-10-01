@@ -7,7 +7,10 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FolioController;
 use App\Http\Controllers\HotelPlanningController;
 use App\Http\Controllers\ImpresionController;
+use App\Http\Controllers\InventarioController;
 use App\Http\Controllers\HotelReportController;
+use App\Http\Controllers\ReporteInventarioController;
+use App\Http\Controllers\ReporteVentaController;
 use App\Http\Controllers\HousekeepingController;
 use App\Http\Controllers\HuespedController;
 use App\Http\Controllers\CajaController;
@@ -117,6 +120,7 @@ Route::middleware(['auth', 'verified', 'property.context'])->group(function () {
         Route::get('/hotel/folios', [FolioController::class, 'index'])->name('folios.index');
         Route::get('/hotel/folios/{folio}', [FolioController::class, 'show'])->name('folios.show');
         Route::post('/hotel/folios/{folio}/cargos', [FolioController::class, 'addCharge'])->name('folios.charges');
+        Route::delete('/hotel/folios/{folio}/cargos/{charge}', [FolioController::class, 'destroyCharge'])->name('folios.charges.destroy');
         Route::post('/hotel/folios/{folio}/cerrar', [FolioController::class, 'close'])->name('folios.close');
         Route::get('/hotel/folios/{folio}/factura', [FolioController::class, 'invoicePdf'])->name('folios.invoice');
         Route::post('/hotel/folios/{folio}/imprimir', [ImpresionController::class, 'imprimirFolio'])->name('folios.imprimir');
@@ -142,13 +146,34 @@ Route::middleware(['auth', 'verified', 'property.context'])->group(function () {
         ->middleware('permission:reportes.ver')
         ->name('reportes.ingresos.export');
 
+    Route::middleware('permission:reportes.ver')->prefix('hotel/reportes/ventas')->name('reportes.ventas.')->group(function () {
+        Route::get('/', [ReporteVentaController::class, 'index'])->name('index');
+        Route::get('/{tipo}/export', [ReporteVentaController::class, 'export'])->name('export');
+        Route::get('/{tipo}', [ReporteVentaController::class, 'show'])->name('show');
+    });
+
+    Route::middleware('permission:reportes.ver')->prefix('hotel/reportes/inventario')->name('reportes.inventario.')->group(function () {
+        Route::get('/', [ReporteInventarioController::class, 'index'])->name('index');
+        Route::get('/generales', [ReporteInventarioController::class, 'generales'])->name('generales');
+        Route::get('/por-producto', [ReporteInventarioController::class, 'porProducto'])->name('por-producto');
+        Route::get('/por-tipo', [ReporteInventarioController::class, 'porTipo'])->name('por-tipo');
+        Route::get('/por-usuario', [ReporteInventarioController::class, 'porUsuario'])->name('por-usuario');
+        Route::get('/bajo-stock', [ReporteInventarioController::class, 'bajoStock'])->name('bajo-stock');
+        Route::get('/resumen-general', [ReporteInventarioController::class, 'resumenGeneral'])->name('resumen-general');
+    });
+
     Route::get('/hotel/pos', [PosController::class, 'index'])->middleware('permission:pos.vender')->name('pos.index');
     Route::post('/hotel/pos/cargo', [PosController::class, 'chargeToFolio'])->middleware('permission:pos.vender')->name('pos.charge');
+    Route::post('/hotel/pos/vender', [PosController::class, 'vender'])->middleware('permission:pos.vender')->name('pos.vender');
+    Route::post('/hotel/pos/ventas/{venta}/imprimir', [ImpresionController::class, 'imprimirVenta'])->middleware('permission:pos.vender')->name('pos.ventas.imprimir');
 
     Route::middleware('permission:caja.operar')->group(function () {
         Route::get('/hotel/caja', [CajaController::class, 'index'])->name('caja.index');
         Route::post('/hotel/caja/apertura', [CajaController::class, 'abrir'])->name('caja.abrir');
         Route::post('/hotel/caja/corte', [CajaController::class, 'cortar'])->name('caja.cortar');
+        Route::post('/hotel/caja/movimientos', [CajaController::class, 'movimiento'])->name('caja.movimientos.store');
+        Route::delete('/hotel/caja/movimientos/{movimiento}', [CajaController::class, 'eliminarMovimiento'])->name('caja.movimientos.destroy');
+        Route::post('/hotel/caja/cortes/{corte}/imprimir', [ImpresionController::class, 'imprimirCorte'])->name('caja.cortes.imprimir');
     });
 
     Route::middleware('permission:pos.catalogo')->group(function () {
@@ -160,6 +185,9 @@ Route::middleware(['auth', 'verified', 'property.context'])->group(function () {
         Route::delete('/hotel/pos/outlets/{posOutlet}', [PosController::class, 'destroyOutlet'])->name('pos.outlets.destroy');
         Route::delete('/hotel/pos/categorias/{posCategory}', [PosController::class, 'destroyCategory'])->name('pos.categories.destroy');
         Route::delete('/hotel/pos/productos/{posProduct}', [PosController::class, 'destroyProduct'])->name('pos.products.destroy');
+
+        Route::get('/hotel/inventario', [InventarioController::class, 'index'])->name('inventario.index');
+        Route::post('/hotel/inventario/movimientos', [InventarioController::class, 'store'])->name('inventario.store');
     });
 
     Route::middleware('permission:administracion.usuarios')->group(function () {
